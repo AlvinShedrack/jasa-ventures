@@ -506,7 +506,104 @@ function downloadAllCSV() {
   URL.revokeObjectURL(url);
 }
 
-function backupToEmail() {
+function buildTextTable(headers, rows) {
+  const widths = headers.map((header, index) =>
+    Math.max(
+      header.length,
+      ...rows.map((row) => String(row[index] ?? "").length)
+    )
+  );
+
+  const formatRow = (row) =>
+    `| ${row
+      .map((cell, index) => String(cell ?? "").padEnd(widths[index]))
+      .join(" | ")} |`;
+
+  const headerLine = formatRow(headers);
+  const divider = `| ${widths.map((width) => "-".repeat(width)).join(" | ")} |`;
+  const bodyLines = rows.map(formatRow).join("\n");
+
+  return `${headerLine}\n${divider}${bodyLines ? `\n${bodyLines}` : ""}`;
+}
+
+function buildSection(title, headers, rows) {
+  if (!rows.length) {
+    return `${title}\nNo records available.\n\n`;
+  }
+
+  return `${title}\n${buildTextTable(headers, rows)}\n\n`;
+}
+
+function buildLedgerEmailTable() {
+  const rows = [];
+  let balance = 0;
+
+  ledgerRecords.forEach((record, index) => {
+    if (record.type === "credit") {
+      balance += Number(record.amount);
+    } else {
+      balance -= Number(record.amount);
+    }
+
+    rows.push([
+      index + 1,
+      record.date,
+      record.description,
+      record.type === "credit" ? formatMoney(record.amount) : "-",
+      record.type === "debit" ? formatMoney(record.amount) : "-",
+      formatMoney(balance)
+    ]);
+  });
+
+  return buildSection(
+    "LEDGER RECORDS",
+    ["#", "Date", "Description", "Credit", "Debit", "Balance"],
+    rows
+  );
+}
+
+function buildSimpleEmailTable(title, headers, records, mapRow) {
+  const rows = records.map(mapRow);
+  return buildSection(title, headers, rows);
+}
+
+function buildMonthlySummaryEmailTable() {
+  const monthMap = {};
+
+  function addRecords(records, key) {
+    records.forEach((record) => {
+      const month = getMonthKey(record.date);
+      if (!monthMap[month]) {
+        monthMap[month] = { sales: 0, purchases: 0, costSales: 0 };
+      }
+      monthMap[month][key] += Number(record.amount);
+    });
+  }
+
+  addRecords(salesRecords, "sales");
+  addRecords(purchaseRecords, "purchases");
+  addRecords(costSalesRecords, "costSales");
+
+  const rows = Object.keys(monthMap)
+    .sort()
+    .map((month) => {
+      const data = monthMap[month];
+      return [
+        formatMonthKey(month),
+        formatMoney(data.sales),
+        formatMoney(data.purchases),
+        formatMoney(data.costSales),
+        formatMoney(data.sales - data.costSales)
+      ];
+    });
+
+  return buildSection(
+    "MONTHLY SUMMARY",
+    ["Month", "Sales", "Purchases", "Cost of Sales", "Gross Profit"],
+    rows
+  );
+}
+async function backupToEmail() {
   const totalRecords =
     ledgerRecords.length +
     salesRecords.length +
@@ -514,34 +611,50 @@ function backupToEmail() {
     costSalesRecords.length;
 
   if (totalRecords === 0) {
-    alert("No records available for email backup.");
+    alert("No records available for backup.");
     return;
   }
 
   if (!navigator.onLine) {
-    alert("You are offline. Records are safely saved on this device. Connect to internet, then click Backup to Email again.");
+    alert("You are offline. Records are safely saved on this device. Connect to internet, then click Backup again.");
     return;
   }
 
   const csv = generateFullCSV();
 
-  /*
-    Replace this email with the real backup email.
-    Example:
-    const email = "jasa.ventures@gmail.com";
-  */
-  const email = "alvinshedrack90@gmail.com";
+  const formspreeEndpoint = "https://formspree.io/f/xjgzykol";
 
-  const subject = "Jasa Ventures Backup";
-  const body =
-    "Hello,\n\nPlease find below the Jasa Ventures backup:\n\n" +
-    csv +
-    "\nRegards.";
+  const backupData = {
+    business_name: "Jasa Ventures",
+    backup_type: "Full Business Backup",
+    total_ledger_records: ledgerRecords.length,
+    total_sales_records: salesRecords.length,
+    total_purchase_records: purchaseRecords.length,
+    total_cost_of_sales_records: costSalesRecords.length,
+    backup_date: new Date().toLocaleString(),
+    backup_csv: csv
+  };
 
-  window.location.href =
-    `mailto:${email}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+  try {
+    const response = await fetch(formspreeEndpoint, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Accept": "application/json"
+      },
+      body: JSON.stringify(backupData)
+    });
+
+    if (response.ok) {
+      alert("Backup sent successfully to Formspree.");
+    } else {
+      alert("Backup failed. Please check your Formspree endpoint.");
+    }
+  } catch (error) {
+    alert("Backup failed. Please check your internet connection and try again.");
+    console.error(error);
+  }
 }
-
 /* =========================
    STORAGE AND HELPERS
 ========================= */
