@@ -1,4 +1,4 @@
-﻿const CACHE_VERSION = "v2";
+﻿const CACHE_NAME = "jasa-ventures-cache-v2";
 const PRECACHE = `jasa-ventures-precache-${CACHE_VERSION}`;
 const RUNTIME = `jasa-ventures-runtime-${CACHE_VERSION}`;
 
