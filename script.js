@@ -136,44 +136,44 @@ function migrateOldRecords() {
 /* =========================
    LEDGER
 ========================= */
-
-document.getElementById("salesForm").addEventListener("submit", function (event) {
+document.getElementById("ledgerForm").addEventListener("submit", function (event) {
   event.preventDefault();
 
-  const date = document.getElementById("salesDate").value;
-  const description = document.getElementById("salesDescription").value.trim();
-  const invoice = document.getElementById("salesInvoice").value.trim();
-  const amount = Number(document.getElementById("salesAmount").value);
+  const date = document.getElementById("ledgerDate").value;
+  const description = document.getElementById("ledgerDescription").value.trim();
+  const type = document.getElementById("ledgerType").value;
+  const amount = Number(document.getElementById("ledgerAmount").value);
 
-  if (!date || !description || amount <= 0) {
-    alert("Please enter valid sales details.");
+  if (!date || !description || !type || amount <= 0) {
+    alert("Please enter valid ledger details.");
     return;
   }
 
   const newRecord = {
-    id: editingRecord.sales || createId(),
+    id: editingRecord.ledger || createId(),
     date,
     description,
-    invoice,
+    type,
     amount
   };
 
-  if (editingRecord.sales) {
-    salesRecords = salesRecords.map((record) =>
-      String(record.id) === String(editingRecord.sales) ? newRecord : record
+  if (editingRecord.ledger) {
+    ledgerRecords = ledgerRecords.map((record) =>
+      String(record.id) === String(editingRecord.ledger) ? newRecord : record
     );
-    editingRecord.sales = null;
-    document.getElementById("salesSubmitBtn").textContent = "Add Sale";
+    editingRecord.ledger = null;
+    document.getElementById("ledgerSubmitBtn").textContent = "Add Entry";
   } else {
-    salesRecords.push(newRecord);
+    ledgerRecords.push(newRecord);
   }
 
   saveAll();
   renderAll();
 
   this.reset();
-  document.getElementById("salesDate").valueAsDate = new Date();
+  document.getElementById("ledgerDate").valueAsDate = new Date();
 });
+
 
 function renderLedger() {
   const table = document.getElementById("ledgerTable");
@@ -226,7 +226,6 @@ function deleteLedger(id) {
 /* =========================
    SALES
 ========================= */
-
 document.getElementById("salesForm").addEventListener("submit", function (event) {
   event.preventDefault();
 
@@ -240,13 +239,26 @@ document.getElementById("salesForm").addEventListener("submit", function (event)
     return;
   }
 
-  salesRecords.push({
-    id: createId(),
+  const newRecord = {
+    id: editingRecord.sales || createId(),
     date,
     description,
     invoice,
     amount
-  });
+  };
+
+  if (editingRecord.sales) {
+    salesRecords = salesRecords.map((record) =>
+      String(record.id) === String(editingRecord.sales) ? newRecord : record
+    );
+
+    editingRecord.sales = null;
+
+    const btn = document.getElementById("salesSubmitBtn");
+    if (btn) btn.textContent = "Add Sale";
+  } else {
+    salesRecords.push(newRecord);
+  }
 
   saveAll();
   renderAll();
