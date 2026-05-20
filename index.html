@@ -19,7 +19,6 @@
 </head>
 
 <body>
-
   <div class="app-shell">
 
     <header class="app-header">
@@ -28,7 +27,7 @@
 
         <div>
           <h1>Jasa Ventures</h1>
-          <p>Offline sales, purchases, cost of sales and ledger tracker</p>
+          <p>Offline ledger, sales, purchases, cost of sales and advance tracker</p>
         </div>
       </div>
 
@@ -36,19 +35,19 @@
     </header>
 
     <nav class="tabs">
-      <button class="tab-btn active" onclick="openPage('dashboard')">Dashboard</button>
-      <button class="tab-btn" onclick="openPage('ledger')">Ledger</button>
-      <button class="tab-btn" onclick="openPage('sales')">Sales</button>
-      <button class="tab-btn" onclick="openPage('purchases')">Purchases</button>
-      <button class="tab-btn" onclick="openPage('costSales')">Cost of Sales</button>
-      <button class="tab-btn" onclick="openPage('monthly')">Monthly Summary</button>
+      <button class="tab-btn active" onclick="openPage('dashboard', this)">Dashboard</button>
+      <button class="tab-btn" onclick="openPage('ledger', this)">Ledger</button>
+      <button class="tab-btn" onclick="openPage('sales', this)">Sales</button>
+      <button class="tab-btn" onclick="openPage('purchases', this)">Purchases</button>
+      <button class="tab-btn" onclick="openPage('costSales', this)">Cost of Sales</button>
+      <button class="tab-btn" onclick="openPage('advance', this)">Advance</button>
+      <button class="tab-btn" onclick="openPage('monthly', this)">Monthly Summary</button>
     </nav>
 
     <main>
 
       <!-- DASHBOARD -->
       <section id="dashboard" class="page active-page">
-
         <div class="summary-grid">
           <div class="summary-card">
             <p>Total Sales</p>
@@ -78,6 +77,11 @@
           </div>
 
           <div class="summary-card">
+            <p>Total Advances</p>
+            <h2 id="totalAdvances">0</h2>
+          </div>
+
+          <div class="summary-card">
             <p>Total Debit</p>
             <h2 id="totalDebit">0</h2>
           </div>
@@ -86,18 +90,23 @@
             <p>Total Credit</p>
             <h2 id="totalCredit">0</h2>
           </div>
+        </div>
 
+        <div class="summary-grid one-card">
           <div class="summary-card">
             <p>Total Records</p>
             <h2 id="totalRecords">0</h2>
           </div>
         </div>
 
+        <div class="note-card">
+          <strong>Gross Profit Formula:</strong>
+          <span>Cost of Sales + Purchases - Sales</span>
+        </div>
       </section>
 
       <!-- LEDGER -->
       <section id="ledger" class="page">
-
         <section class="form-card">
           <h3>Add Ledger Entry</h3>
 
@@ -123,7 +132,7 @@
 
             <div class="form-group">
               <label>Amount</label>
-              <input type="number" id="ledgerAmount" placeholder="0" min="1" required />
+              <input type="number" id="ledgerAmount" placeholder="0" min="1" step="0.01" required />
             </div>
 
             <button type="submit" class="primary-btn">Add Entry</button>
@@ -153,12 +162,10 @@
             </table>
           </div>
         </section>
-
       </section>
 
       <!-- SALES -->
       <section id="sales" class="page">
-
         <section class="form-card">
           <h3>Add Sales Record</h3>
 
@@ -180,7 +187,7 @@
 
             <div class="form-group">
               <label>Amount</label>
-              <input type="number" id="salesAmount" placeholder="0" min="1" required />
+              <input type="number" id="salesAmount" placeholder="0" min="1" step="0.01" required />
             </div>
 
             <button type="submit" class="primary-btn">Add Sale</button>
@@ -210,19 +217,29 @@
             </table>
           </div>
         </section>
-
       </section>
 
       <!-- PURCHASES -->
       <section id="purchases" class="page">
-
         <section class="form-card">
           <h3>Add Purchase Record</h3>
 
-          <form id="purchaseForm">
+          <form id="purchaseForm" class="wide-form">
             <div class="form-group">
               <label>Date</label>
               <input type="date" id="purchaseDate" required />
+            </div>
+
+            <div class="form-group">
+              <label>Purchase Type</label>
+              <select id="purchaseType" required>
+                <option value="">Choose</option>
+                <option value="Stock">Stock</option>
+                <option value="Raw Materials">Raw Materials</option>
+                <option value="Packaging">Packaging</option>
+                <option value="Transport">Transport</option>
+                <option value="Other">Other</option>
+              </select>
             </div>
 
             <div class="form-group description-field">
@@ -236,8 +253,18 @@
             </div>
 
             <div class="form-group">
+              <label>Quantity</label>
+              <input type="number" id="purchaseQuantity" placeholder="0" min="0" step="0.01" required />
+            </div>
+
+            <div class="form-group">
+              <label>Price</label>
+              <input type="number" id="purchasePrice" placeholder="0" min="0" step="0.01" required />
+            </div>
+
+            <div class="form-group">
               <label>Amount</label>
-              <input type="number" id="purchaseAmount" placeholder="0" min="1" required />
+              <input type="number" id="purchaseAmount" placeholder="Auto" readonly />
             </div>
 
             <button type="submit" class="primary-btn">Add Purchase</button>
@@ -256,8 +283,11 @@
                 <tr>
                   <th>#</th>
                   <th>Date</th>
+                  <th>Type</th>
                   <th>Description</th>
                   <th>Receipt No.</th>
+                  <th>Quantity</th>
+                  <th>Price</th>
                   <th>Amount</th>
                   <th>Month</th>
                   <th>Action</th>
@@ -267,16 +297,14 @@
             </table>
           </div>
         </section>
-
       </section>
 
       <!-- COST OF SALES -->
       <section id="costSales" class="page">
-
         <section class="form-card">
           <h3>Add Cost of Sales Record</h3>
 
-          <form id="costSalesForm">
+          <form id="costSalesForm" class="wide-form">
             <div class="form-group">
               <label>Date</label>
               <input type="date" id="costSalesDate" required />
@@ -293,8 +321,18 @@
             </div>
 
             <div class="form-group">
+              <label>Quantity</label>
+              <input type="number" id="costSalesQuantity" placeholder="0" min="0" step="0.01" required />
+            </div>
+
+            <div class="form-group">
+              <label>Price</label>
+              <input type="number" id="costSalesPrice" placeholder="0" min="0" step="0.01" required />
+            </div>
+
+            <div class="form-group">
               <label>Amount</label>
-              <input type="number" id="costSalesAmount" placeholder="0" min="1" required />
+              <input type="number" id="costSalesAmount" placeholder="Auto" readonly />
             </div>
 
             <button type="submit" class="primary-btn">Add Cost</button>
@@ -315,6 +353,8 @@
                   <th>Date</th>
                   <th>Description</th>
                   <th>Reference No.</th>
+                  <th>Quantity</th>
+                  <th>Price</th>
                   <th>Amount</th>
                   <th>Month</th>
                   <th>Action</th>
@@ -324,17 +364,143 @@
             </table>
           </div>
         </section>
+      </section>
 
+      <!-- ADVANCE -->
+      <section id="advance" class="page">
+        <section class="form-card">
+          <h3>Add Advance Record</h3>
+
+          <form id="advanceForm" class="advance-form">
+            <div class="form-group">
+              <label>Advance Date</label>
+              <input type="date" id="advanceDate" required />
+            </div>
+
+            <div class="form-group">
+              <label>Person Receiving Advance</label>
+              <input type="text" id="advancePerson" placeholder="Example: Samuel" required />
+            </div>
+
+            <div class="form-group">
+              <label>Mode of Payment</label>
+              <select id="advancePaymentMode" required>
+                <option value="">Choose</option>
+                <option value="Cash">Cash</option>
+                <option value="Mobile Money">Mobile Money</option>
+                <option value="Bank Transfer">Bank Transfer</option>
+                <option value="Cheque">Cheque</option>
+                <option value="Other">Other</option>
+              </select>
+            </div>
+
+            <div class="form-group">
+              <label>Estimated Price</label>
+              <input type="number" id="advanceEstimatedPrice" min="0" step="0.01" required />
+            </div>
+
+            <div class="form-group">
+              <label>Estimated Kilograms</label>
+              <input type="number" id="advanceEstimatedKg" min="0" step="0.01" required />
+            </div>
+
+            <div class="form-group">
+              <label>Recovery Date</label>
+              <input type="date" id="advanceRecoveryDate" required />
+            </div>
+
+            <div class="form-group">
+              <label>Type of Recovery</label>
+              <select id="advanceRecoveryType" required>
+                <option value="">Choose</option>
+                <option value="Cash Recovery">Cash Recovery</option>
+                <option value="Goods Recovery">Goods Recovery</option>
+                <option value="Partial Recovery">Partial Recovery</option>
+                <option value="Full Recovery">Full Recovery</option>
+                <option value="Pending">Pending</option>
+              </select>
+            </div>
+
+            <div class="form-group">
+              <label>Gross Weight</label>
+              <input type="number" id="advanceGrossWeight" min="0" step="0.01" required />
+            </div>
+
+            <div class="form-group">
+              <label>Net Weight</label>
+              <input type="number" id="advanceNetWeight" min="0" step="0.01" required />
+            </div>
+
+            <div class="form-group">
+              <label>Price</label>
+              <input type="number" id="advancePrice" min="0" step="0.01" required />
+            </div>
+
+            <div class="form-group">
+              <label>Amount</label>
+              <input type="number" id="advanceAmount" placeholder="Auto" readonly />
+            </div>
+
+            <div class="form-group">
+              <label>Excess Delivery</label>
+              <input type="number" id="advanceExcessDelivery" placeholder="Auto" readonly />
+            </div>
+
+            <button type="submit" class="primary-btn">Add Advance</button>
+          </form>
+        </section>
+
+        <section class="table-card">
+          <div class="table-title">
+            <h3>Advance Records</h3>
+            <span id="advanceCount">0 records</span>
+          </div>
+
+          <div class="table-wrapper">
+            <table>
+              <thead>
+                <tr>
+                  <th>#</th>
+                  <th>Advance Date</th>
+                  <th>Person</th>
+                  <th>Payment Mode</th>
+                  <th>Estimated Price</th>
+                  <th>Estimated Kg</th>
+                  <th>Recovery Date</th>
+                  <th>Recovery Type</th>
+                  <th>Gross Weight</th>
+                  <th>Net Weight</th>
+                  <th>Price</th>
+                  <th>Amount</th>
+                  <th>Excess Delivery</th>
+                  <th>Action</th>
+                </tr>
+              </thead>
+              <tbody id="advanceTable"></tbody>
+            </table>
+          </div>
+        </section>
       </section>
 
       <!-- MONTHLY SUMMARY -->
       <section id="monthly" class="page">
-
         <section class="actions-card">
-          <button onclick="downloadAllCSV()">Download Full CSV Backup</button>
-          <button onclick="backupToEmail()">Send Backup Online</button>
+          <button onclick="downloadAllCSV()">Download CSV Backup</button>
+          <button onclick="downloadStyledExcelBackup()">Download Styled Excel</button>
+          <button onclick="printStyledPDF()">Print / Save PDF</button>
+          <button onclick="sendBackupByEmailAndFormspree()">Send Backup</button>
+          <button onclick="exportJSONBackup()">Export App Data</button>
+          <button onclick="triggerImport()">Import / Merge Data</button>
           <button onclick="installApp()" id="installBtn" class="install-btn">Install App</button>
           <button onclick="clearAllRecords()" class="danger-btn">Clear All Records</button>
+
+          <input
+            type="file"
+            id="importFile"
+            accept=".json"
+            style="display:none"
+            onchange="importAndMergeData(event)"
+          />
         </section>
 
         <section class="table-card">
@@ -358,11 +524,9 @@
             </table>
           </div>
         </section>
-
       </section>
 
     </main>
-
   </div>
 
   <script src="script.js"></script>

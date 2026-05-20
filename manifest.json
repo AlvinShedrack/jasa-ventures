@@ -1,7 +1,7 @@
 {
   "name": "Jasa Ventures",
   "short_name": "Jasa",
-  "description": "Offline ledger, sales, purchases and cost of sales tracker for Jasa Ventures",
+  "description": "Offline ledger, sales, purchases, cost of sales and advance tracker for Jasa Ventures",
   "start_url": "./index.html",
   "scope": "./",
   "display": "standalone",
