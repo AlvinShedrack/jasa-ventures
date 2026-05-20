@@ -466,3 +466,18 @@ tbody tr:nth-child(even) {
     padding: 7px;
   }
 }
+
+.edit-btn {
+  background: #e7ad4a;
+  color: #243865;
+  min-height: 36px;
+  padding: 8px 10px;
+  margin-bottom: 5px;
+}
+
+.action-buttons {
+  display: flex;
+  gap: 6px;
+  justify-content: center;
+  flex-wrap: wrap;
+}

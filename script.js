@@ -6,6 +6,14 @@ let advanceRecords = JSON.parse(localStorage.getItem("jasa_advance_records")) ||
 
 let deferredPrompt = null;
 
+let editingRecord = {
+  ledger: null,
+  sales: null,
+  purchase: null,
+  costSales: null,
+  advance: null
+};
+
 const onlineStatus = document.getElementById("onlineStatus");
 const installBtn = document.getElementById("installBtn");
 
@@ -129,32 +137,42 @@ function migrateOldRecords() {
    LEDGER
 ========================= */
 
-document.getElementById("ledgerForm").addEventListener("submit", function (event) {
+document.getElementById("salesForm").addEventListener("submit", function (event) {
   event.preventDefault();
 
-  const date = document.getElementById("ledgerDate").value;
-  const description = document.getElementById("ledgerDescription").value.trim();
-  const type = document.getElementById("ledgerType").value;
-  const amount = Number(document.getElementById("ledgerAmount").value);
+  const date = document.getElementById("salesDate").value;
+  const description = document.getElementById("salesDescription").value.trim();
+  const invoice = document.getElementById("salesInvoice").value.trim();
+  const amount = Number(document.getElementById("salesAmount").value);
 
-  if (!date || !description || !type || amount <= 0) {
-    alert("Please enter valid ledger details.");
+  if (!date || !description || amount <= 0) {
+    alert("Please enter valid sales details.");
     return;
   }
 
-  ledgerRecords.push({
-    id: createId(),
+  const newRecord = {
+    id: editingRecord.sales || createId(),
     date,
     description,
-    type,
+    invoice,
     amount
-  });
+  };
+
+  if (editingRecord.sales) {
+    salesRecords = salesRecords.map((record) =>
+      String(record.id) === String(editingRecord.sales) ? newRecord : record
+    );
+    editingRecord.sales = null;
+    document.getElementById("salesSubmitBtn").textContent = "Add Sale";
+  } else {
+    salesRecords.push(newRecord);
+  }
 
   saveAll();
   renderAll();
 
   this.reset();
-  document.getElementById("ledgerDate").valueAsDate = new Date();
+  document.getElementById("salesDate").valueAsDate = new Date();
 });
 
 function renderLedger() {
@@ -186,7 +204,12 @@ function renderLedger() {
         <td class="credit">${record.type === "credit" ? formatMoney(record.amount) : "-"}</td>
         <td class="debit">${record.type === "debit" ? formatMoney(record.amount) : "-"}</td>
         <td>${formatMoney(balance)}</td>
-        <td><button class="delete-btn" onclick="deleteLedger('${record.id}')">Delete</button></td>
+        <td>
+          <div class="action-buttons">
+            <button class="edit-btn" onclick="editLedger('${record.id}')">Edit</button>
+            <button class="delete-btn" onclick="deleteLedger('${record.id}')">Delete</button>
+          </div>
+        </td>
       </tr>
     `;
   });
@@ -253,7 +276,12 @@ function renderSales() {
         <td>${escapeHTML(record.invoice || "-")}</td>
         <td class="credit">${formatMoney(record.amount)}</td>
         <td>${getMonthName(record.date)}</td>
-        <td><button class="delete-btn" onclick="deleteSale('${record.id}')">Delete</button></td>
+        <td>
+          <div class="action-buttons">
+            <button class="edit-btn" onclick="editSale('${record.id}')">Edit</button>
+            <button class="delete-btn" onclick="deleteSale('${record.id}')">Delete</button>
+          </div>
+        </td>
       </tr>
     `;
   });
@@ -289,8 +317,8 @@ document.getElementById("purchaseForm").addEventListener("submit", function (eve
     return;
   }
 
-  purchaseRecords.push({
-    id: createId(),
+  const newRecord = {
+    id: editingRecord.purchase || createId(),
     date,
     type,
     description,
@@ -298,7 +326,17 @@ document.getElementById("purchaseForm").addEventListener("submit", function (eve
     quantity,
     price,
     amount
-  });
+  };
+
+  if (editingRecord.purchase) {
+    purchaseRecords = purchaseRecords.map((record) =>
+      String(record.id) === String(editingRecord.purchase) ? newRecord : record
+    );
+    editingRecord.purchase = null;
+    document.getElementById("purchaseSubmitBtn").textContent = "Add Purchase";
+  } else {
+    purchaseRecords.push(newRecord);
+  }
 
   saveAll();
   renderAll();
@@ -332,7 +370,12 @@ function renderPurchases() {
         <td>${formatMoney(record.price)}</td>
         <td class="debit">${formatMoney(record.amount)}</td>
         <td>${getMonthName(record.date)}</td>
-        <td><button class="delete-btn" onclick="deletePurchase('${record.id}')">Delete</button></td>
+        <td>
+          <div class="action-buttons">
+            <button class="edit-btn" onclick="editPurchase('${record.id}')">Edit</button>
+            <button class="delete-btn" onclick="deletePurchase('${record.id}')">Delete</button>
+          </div>
+        </td>>
       </tr>
     `;
   });
@@ -367,15 +410,25 @@ document.getElementById("costSalesForm").addEventListener("submit", function (ev
     return;
   }
 
-  costSalesRecords.push({
-    id: createId(),
+  const newRecord = {
+    id: editingRecord.costSales || createId(),
     date,
     description,
     reference,
     quantity,
     price,
     amount
-  });
+  };
+
+  if (editingRecord.costSales) {
+    costSalesRecords = costSalesRecords.map((record) =>
+      String(record.id) === String(editingRecord.costSales) ? newRecord : record
+    );
+    editingRecord.costSales = null;
+    document.getElementById("costSalesSubmitBtn").textContent = "Add Cost";
+  } else {
+    costSalesRecords.push(newRecord);
+  }
 
   saveAll();
   renderAll();
@@ -408,7 +461,12 @@ function renderCostSales() {
         <td>${formatMoney(record.price)}</td>
         <td class="debit">${formatMoney(record.amount)}</td>
         <td>${getMonthName(record.date)}</td>
-        <td><button class="delete-btn" onclick="deleteCostSale('${record.id}')">Delete</button></td>
+        <td>
+          <div class="action-buttons">
+            <button class="edit-btn" onclick="editCostSale('${record.id}')">Edit</button>
+            <button class="delete-btn" onclick="deleteCostSale('${record.id}')">Delete</button>
+          </div>
+        </td>
       </tr>
     `;
   });
@@ -425,7 +483,6 @@ function deleteCostSale(id) {
 /* =========================
    ADVANCE
 ========================= */
-
 document.getElementById("advanceForm").addEventListener("submit", function (event) {
   event.preventDefault();
 
@@ -460,8 +517,8 @@ document.getElementById("advanceForm").addEventListener("submit", function (even
     return;
   }
 
-  advanceRecords.push({
-    id: createId(),
+  const newRecord = {
+    id: editingRecord.advance || createId(),
     advanceDate,
     person,
     paymentMode,
@@ -474,7 +531,17 @@ document.getElementById("advanceForm").addEventListener("submit", function (even
     price,
     amount,
     excessDelivery
-  });
+  };
+
+  if (editingRecord.advance) {
+    advanceRecords = advanceRecords.map((record) =>
+      String(record.id) === String(editingRecord.advance) ? newRecord : record
+    );
+    editingRecord.advance = null;
+    document.getElementById("advanceSubmitBtn").textContent = "Add Advance";
+  } else {
+    advanceRecords.push(newRecord);
+  }
 
   saveAll();
   renderAll();
@@ -516,7 +583,12 @@ function renderAdvance() {
         <td>${formatMoney(record.price)}</td>
         <td class="credit">${formatMoney(record.amount)}</td>
         <td class="${record.excessDelivery >= 0 ? "positive" : "negative"}">${formatNumber(record.excessDelivery)}</td>
-        <td><button class="delete-btn" onclick="deleteAdvance('${record.id}')">Delete</button></td>
+        <td>
+          <div class="action-buttons">
+            <button class="edit-btn" onclick="editAdvance('${record.id}')">Edit</button>
+            <button class="delete-btn" onclick="deleteAdvance('${record.id}')">Delete</button>
+          </div>
+        </td>
       </tr>
     `;
   });
@@ -528,6 +600,94 @@ function deleteAdvance(id) {
   advanceRecords = advanceRecords.filter((record) => String(record.id) !== String(id));
   saveAll();
   renderAll();
+}
+
+function editLedger(id) {
+  const record = ledgerRecords.find((item) => String(item.id) === String(id));
+  if (!record) return;
+
+  openPage("ledger", document.querySelector("button[onclick*='ledger']"));
+
+  document.getElementById("ledgerDate").value = record.date;
+  document.getElementById("ledgerDescription").value = record.description;
+  document.getElementById("ledgerType").value = record.type;
+  document.getElementById("ledgerAmount").value = record.amount;
+
+  editingRecord.ledger = record.id;
+  document.getElementById("ledgerSubmitBtn").textContent = "Update Entry";
+}
+
+function editSale(id) {
+  const record = salesRecords.find((item) => String(item.id) === String(id));
+  if (!record) return;
+
+  openPage("sales", document.querySelector("button[onclick*='sales']"));
+
+  document.getElementById("salesDate").value = record.date;
+  document.getElementById("salesDescription").value = record.description;
+  document.getElementById("salesInvoice").value = record.invoice || "";
+  document.getElementById("salesAmount").value = record.amount;
+
+  editingRecord.sales = record.id;
+  document.getElementById("salesSubmitBtn").textContent = "Update Sale";
+}
+
+function editPurchase(id) {
+  const record = purchaseRecords.find((item) => String(item.id) === String(id));
+  if (!record) return;
+
+  openPage("purchases", document.querySelector("button[onclick*='purchases']"));
+
+  document.getElementById("purchaseDate").value = record.date;
+  document.getElementById("purchaseType").value = record.type || "Other";
+  document.getElementById("purchaseDescription").value = record.description;
+  document.getElementById("purchaseReceipt").value = record.receipt || "";
+  document.getElementById("purchaseQuantity").value = record.quantity;
+  document.getElementById("purchasePrice").value = record.price;
+  document.getElementById("purchaseAmount").value = record.amount;
+
+  editingRecord.purchase = record.id;
+  document.getElementById("purchaseSubmitBtn").textContent = "Update Purchase";
+}
+
+function editCostSale(id) {
+  const record = costSalesRecords.find((item) => String(item.id) === String(id));
+  if (!record) return;
+
+  openPage("costSales", document.querySelector("button[onclick*='costSales']"));
+
+  document.getElementById("costSalesDate").value = record.date;
+  document.getElementById("costSalesDescription").value = record.description;
+  document.getElementById("costSalesReference").value = record.reference || "";
+  document.getElementById("costSalesQuantity").value = record.quantity;
+  document.getElementById("costSalesPrice").value = record.price;
+  document.getElementById("costSalesAmount").value = record.amount;
+
+  editingRecord.costSales = record.id;
+  document.getElementById("costSalesSubmitBtn").textContent = "Update Cost";
+}
+
+function editAdvance(id) {
+  const record = advanceRecords.find((item) => String(item.id) === String(id));
+  if (!record) return;
+
+  openPage("advance", document.querySelector("button[onclick*='advance']"));
+
+  document.getElementById("advanceDate").value = record.advanceDate;
+  document.getElementById("advancePerson").value = record.person;
+  document.getElementById("advancePaymentMode").value = record.paymentMode;
+  document.getElementById("advanceEstimatedPrice").value = record.estimatedPrice;
+  document.getElementById("advanceEstimatedKg").value = record.estimatedKg;
+  document.getElementById("advanceRecoveryDate").value = record.recoveryDate;
+  document.getElementById("advanceRecoveryType").value = record.recoveryType;
+  document.getElementById("advanceGrossWeight").value = record.grossWeight;
+  document.getElementById("advanceNetWeight").value = record.netWeight;
+  document.getElementById("advancePrice").value = record.price;
+  document.getElementById("advanceAmount").value = record.amount;
+  document.getElementById("advanceExcessDelivery").value = record.excessDelivery;
+
+  editingRecord.advance = record.id;
+  document.getElementById("advanceSubmitBtn").textContent = "Update Advance";
 }
 
 /* =========================
@@ -744,7 +904,7 @@ async function sendBackupByEmailAndFormspree() {
 
   downloadFile(csv, "jasa_ventures_backup.csv", "text/csv");
   downloadFile(htmlReport, "jasa_ventures_styled_excel_backup.xls", "application/vnd.ms-excel");
-  downloadFile(htmlReport, "jasa_ventures_pdf_style_report.html", "text/html");
+  openPDFDownloadWindow(htmlReport);
 
   await sendTabledTextToFormspree(staffName.trim(), recipientEmail, subject, tabledText, htmlReport, csv);
 
@@ -808,6 +968,19 @@ function exportJSONBackup() {
 
   const json = JSON.stringify(backup, null, 2);
   downloadFile(json, "jasa_ventures_app_data_backup.json", "application/json");
+}
+
+function openPDFDownloadWindow(reportHTML) {
+  const pdfWindow = window.open("", "_blank");
+
+  pdfWindow.document.open();
+  pdfWindow.document.write(reportHTML);
+  pdfWindow.document.close();
+
+  pdfWindow.onload = function () {
+    pdfWindow.focus();
+    pdfWindow.print();
+  };
 }
 
 function triggerImport() {

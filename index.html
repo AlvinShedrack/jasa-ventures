@@ -135,7 +135,7 @@
               <input type="number" id="ledgerAmount" placeholder="0" min="1" step="0.01" required />
             </div>
 
-            <button type="submit" class="primary-btn">Add Entry</button>
+            <button type="submit" class="primary-btn" id="ledgerSubmitBtn">Add Entry</button>
           </form>
         </section>
 
@@ -190,7 +190,7 @@
               <input type="number" id="salesAmount" placeholder="0" min="1" step="0.01" required />
             </div>
 
-            <button type="submit" class="primary-btn">Add Sale</button>
+            <button type="submit" class="primary-btn" id="salesSubmitBtn">Add Sale</button>
           </form>
         </section>
 
@@ -267,7 +267,7 @@
               <input type="number" id="purchaseAmount" placeholder="Auto" readonly />
             </div>
 
-            <button type="submit" class="primary-btn">Add Purchase</button>
+            <button type="submit" class="primary-btn" id="purchaseSubmitBtn">Add Purchase</button>
           </form>
         </section>
 
@@ -335,7 +335,7 @@
               <input type="number" id="costSalesAmount" placeholder="Auto" readonly />
             </div>
 
-            <button type="submit" class="primary-btn">Add Cost</button>
+            <button type="submit" class="primary-btn" id="costSalesSubmitBtn">Add Cost</button>
           </form>
         </section>
 
@@ -446,7 +446,7 @@
               <input type="number" id="advanceExcessDelivery" placeholder="Auto" readonly />
             </div>
 
-            <button type="submit" class="primary-btn">Add Advance</button>
+            <button type="submit" class="primary-btn" id="advanceSubmitBtn">Add Advance</button>
           </form>
         </section>
 
@@ -487,7 +487,7 @@
         <section class="actions-card">
           <button onclick="downloadAllCSV()">Download CSV Backup</button>
           <button onclick="downloadStyledExcelBackup()">Download Styled Excel</button>
-          <button onclick="printStyledPDF()">Print / Save PDF</button>
+          <button onclick="printStyledPDF()">Download PDF</button>
           <button onclick="sendBackupByEmailAndFormspree()">Send Backup</button>
           <button onclick="exportJSONBackup()">Export App Data</button>
           <button onclick="triggerImport()">Import / Merge Data</button>
