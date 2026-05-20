@@ -1219,7 +1219,7 @@ function buildStyledBackupHTML(staffName) {
   <div class="report-header">
     <h1>Jasa Ventures Business Backup Report</h1>
     <p class="meta"><strong>Staff Name:</strong> ${escapeHTML(staffName)}</p>
-    <p class="meta"><strong>Generated On:</strong> ${new Date().toLocaleString()}</p>
+    <p class="meta"><strong>Generated On:</strong> ${formatDateTimeForReport(new Date())}</p>
     <p class="meta"><strong>Date Format:</strong> DD/MM/YYYY</p>
   </div>
 
@@ -1746,4 +1746,15 @@ if ("serviceWorker" in navigator) {
         console.error("Service Worker registration failed:", error);
       });
   });
+}
+
+function formatDateTimeForReport(dateObject) {
+  const day = String(dateObject.getDate()).padStart(2, "0");
+  const month = String(dateObject.getMonth() + 1).padStart(2, "0");
+  const year = dateObject.getFullYear();
+
+  const hours = String(dateObject.getHours()).padStart(2, "0");
+  const minutes = String(dateObject.getMinutes()).padStart(2, "0");
+
+  return `${day}/${month}/${year} ${hours}:${minutes}`;
 }
