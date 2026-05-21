@@ -791,7 +791,7 @@ function renderMonthlySummary() {
 
   months.forEach((month) => {
     const data = monthMap[month];
-    const grossProfit = data.costSales - data.purchases + data.sales;
+    const grossProfit = - data.costSales - data.purchases + data.sales;
 
     table.innerHTML += `
       <tr>
@@ -893,7 +893,7 @@ function generateFullCSV() {
 
   Object.keys(monthMap).sort().forEach((month) => {
     const data = monthMap[month];
-    const grossProfit = data.costSales - data.purchases + data.sales;
+    const grossProfit = - data.costSales - data.purchases + data.sales;
     csv += `${formatMonthKey(month)},${data.sales},${data.purchases},${data.costSales},${grossProfit}\n`;
   });
 
@@ -1989,7 +1989,7 @@ function getMonthlyTextRows() {
 
   return Object.keys(monthMap).sort().map((month) => {
     const data = monthMap[month];
-    const grossProfit = data.costSales - data.purchases + data.sales;
+    const grossProfit = - data.costSales - data.purchases + data.sales;
 
     return [
       formatMonthKey(month),
@@ -2042,7 +2042,7 @@ function getTotals() {
   const purchases = sumRecords(purchaseRecords);
   const costSales = sumRecords(costSalesRecords);
   const advances = sumRecords(advanceRecords);
-  const grossProfit = costSales - purchases + sales;
+  const grossProfit = - costSales - purchases + sales;
 
   const credit = ledgerRecords
     .filter((record) => record.type === "credit")
