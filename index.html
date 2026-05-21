@@ -100,8 +100,8 @@
         </div>
 
         <div class="note-card">
-          <strong>Gross Profit:</strong>
-          <span>Cost of Sales - Purchases + Sales</span>
+          <strong>Gross Profit Formula:</strong>
+          <span>Cost of Sales + Purchases - Sales</span>
         </div>
       </section>
 
@@ -165,71 +165,59 @@
       </section>
 
       <!-- SALES -->
-     <section id="sales" class="page">
-  <section class="form-card">
-    <h3>Add Sales Record</h3>
+      <section id="sales" class="page">
+        <section class="form-card">
+          <h3>Add Sales Record</h3>
 
-    <form id="salesForm">
-      <div class="form-group">
-        <label>Date</label>
-        <input type="date" id="salesDate" required />
-      </div>
+          <form id="salesForm">
+            <div class="form-group">
+              <label>Date</label>
+              <input type="date" id="salesDate" required />
+            </div>
 
-      <div class="form-group description-field">
-        <label>Customer / Description</label>
-        <input type="text" id="salesDescription" placeholder="Example: Sale to customer" required />
-      </div>
+            <div class="form-group description-field">
+              <label>Customer / Description</label>
+              <input type="text" id="salesDescription" placeholder="Example: Sale to customer" required />
+            </div>
 
-      <div class="form-group">
-        <label>Invoice No.</label>
-        <input type="text" id="salesInvoice" placeholder="INV-001" />
-      </div>
+            <div class="form-group">
+              <label>Invoice No.</label>
+              <input type="text" id="salesInvoice" placeholder="INV-001" />
+            </div>
 
-      <div class="form-group">
-        <label>Quantity</label>
-        <input type="number" id="salesQuantity" placeholder="0" min="0" step="0.01" required />
-      </div>
+            <div class="form-group">
+              <label>Amount</label>
+              <input type="number" id="salesAmount" placeholder="0" min="1" step="0.01" required />
+            </div>
 
-      <div class="form-group">
-        <label>Price</label>
-        <input type="number" id="salesPrice" placeholder="0" min="0" step="0.01" required />
-      </div>
+            <button type="submit" class="primary-btn" id="salesSubmitBtn">Add Sale</button>
+          </form>
+        </section>
 
-      <div class="form-group">
-        <label>Amount</label>
-        <input type="number" id="salesAmount" placeholder="Auto" readonly />
-      </div>
+        <section class="table-card">
+          <div class="table-title">
+            <h3>Sales Records</h3>
+            <span id="salesCount">0 records</span>
+          </div>
 
-      <button type="submit" class="primary-btn" id="salesSubmitBtn">Add Sale</button>
-    </form>
-  </section>
-
-  <section class="table-card">
-    <div class="table-title">
-      <h3>Sales Records</h3>
-      <span id="salesCount">0 records</span>
-    </div>
-
-    <div class="table-wrapper">
-      <table>
-        <thead>
-          <tr>
-            <th>#</th>
-            <th>Date</th>
-            <th>Description</th>
-            <th>Invoice No.</th>
-            <th>Quantity</th>
-            <th>Price</th>
-            <th>Amount</th>
-            <th>Month</th>
-            <th>Action</th>
-          </tr>
-        </thead>
-        <tbody id="salesTable"></tbody>
-      </table>
-    </div>
-  </section>
-</section>
+          <div class="table-wrapper">
+            <table>
+              <thead>
+                <tr>
+                  <th>#</th>
+                  <th>Date</th>
+                  <th>Description</th>
+                  <th>Invoice No.</th>
+                  <th>Amount</th>
+                  <th>Month</th>
+                  <th>Action</th>
+                </tr>
+              </thead>
+              <tbody id="salesTable"></tbody>
+            </table>
+          </div>
+        </section>
+      </section>
 
       <!-- PURCHASES -->
       <section id="purchases" class="page">
@@ -379,126 +367,120 @@
       </section>
 
       <!-- ADVANCE -->
-     <section id="advance" class="page">
-  <section class="form-card">
-    <h3>Add Advance Record</h3>
+      <section id="advance" class="page">
+        <section class="form-card">
+          <h3>Add Advance Record</h3>
 
-    <form id="advanceForm" class="advance-form">
-      <div class="form-group">
-        <label>Advance Date</label>
-        <input type="date" id="advanceDate" required />
-      </div>
+          <form id="advanceForm" class="advance-form">
+            <div class="form-group">
+              <label>Advance Date</label>
+              <input type="date" id="advanceDate" required />
+            </div>
 
-      <div class="form-group">
-        <label>Person Receiving Advance</label>
-        <input type="text" id="advancePerson" placeholder="Example: Samuel" required />
-      </div>
+            <div class="form-group">
+              <label>Person Receiving Advance</label>
+              <input type="text" id="advancePerson" placeholder="Example: Samuel" required />
+            </div>
 
-      <div class="form-group">
-        <label>Mode of Payment</label>
-        <select id="advancePaymentMode" required>
-          <option value="">Choose</option>
-          <option value="Cash">Cash</option>
-          <option value="Mobile Money">Mobile Money</option>
-          <option value="Bank Transfer">Bank Transfer</option>
-          <option value="Cheque">Cheque</option>
-          <option value="Other">Other</option>
-        </select>
-      </div>
+            <div class="form-group">
+              <label>Mode of Payment</label>
+              <select id="advancePaymentMode" required>
+                <option value="">Choose</option>
+                <option value="Cash">Cash</option>
+                <option value="Mobile Money">Mobile Money</option>
+                <option value="Bank Transfer">Bank Transfer</option>
+                <option value="Cheque">Cheque</option>
+                <option value="Other">Other</option>
+              </select>
+            </div>
 
-      <div class="form-group">
-        <label>Estimated Price</label>
-        <input type="number" id="advanceEstimatedPrice" min="0" step="0.01" required />
-      </div>
+            <div class="form-group">
+              <label>Estimated Price</label>
+              <input type="number" id="advanceEstimatedPrice" min="0" step="0.01" required />
+            </div>
 
-      <div class="form-group">
-        <label>Estimated Kilograms</label>
-        <input type="number" id="advanceEstimatedKg" min="0" step="0.01" required />
-      </div>
+            <div class="form-group">
+              <label>Estimated Kilograms</label>
+              <input type="number" id="advanceEstimatedKg" min="0" step="0.01" required />
+            </div>
 
-      <div class="form-group">
-        <label>Amount Received</label>
-        <input type="number" id="advanceAmountReceived" placeholder="Auto" readonly />
-      </div>
+            <div class="form-group">
+              <label>Recovery Date</label>
+              <input type="date" id="advanceRecoveryDate" required />
+            </div>
 
-      <div class="form-group">
-        <label>Recovery Date</label>
-        <input type="date" id="advanceRecoveryDate" required />
-      </div>
+            <div class="form-group">
+              <label>Type of Recovery</label>
+              <select id="advanceRecoveryType" required>
+                <option value="">Choose</option>
+                <option value="Cash Recovery">Cash Recovery</option>
+                <option value="Goods Recovery">Goods Recovery</option>
+                <option value="Partial Recovery">Partial Recovery</option>
+                <option value="Full Recovery">Full Recovery</option>
+                <option value="Pending">Pending</option>
+              </select>
+            </div>
 
-      <div class="form-group">
-        <label>Type of Recovery</label>
-        <select id="advanceRecoveryType" required>
-          <option value="">Choose</option>
-          <option value="Cash Recovery">Cash Recovery</option>
-          <option value="Goods Recovery">Goods Recovery</option>
-          <option value="Partial Recovery">Partial Recovery</option>
-          <option value="Full Recovery">Full Recovery</option>
-          <option value="Pending">Pending</option>
-        </select>
-      </div>
+            <div class="form-group">
+              <label>Gross Weight</label>
+              <input type="number" id="advanceGrossWeight" min="0" step="0.01" required />
+            </div>
 
-      <div class="form-group">
-        <label>Gross Weight</label>
-        <input type="number" id="advanceGrossWeight" min="0" step="0.01" required />
-      </div>
+            <div class="form-group">
+              <label>Net Weight</label>
+              <input type="number" id="advanceNetWeight" min="0" step="0.01" required />
+            </div>
 
-      <div class="form-group">
-        <label>Net Weight</label>
-        <input type="number" id="advanceNetWeight" min="0" step="0.01" required />
-      </div>
+            <div class="form-group">
+              <label>Price</label>
+              <input type="number" id="advancePrice" min="0" step="0.01" required />
+            </div>
 
-      <div class="form-group">
-        <label>Price</label>
-        <input type="number" id="advancePrice" min="0" step="0.01" required />
-      </div>
+            <div class="form-group">
+              <label>Amount</label>
+              <input type="number" id="advanceAmount" placeholder="Auto" readonly />
+            </div>
 
-      <div class="form-group">
-        <label>Amount Recovered</label>
-        <input type="number" id="advanceAmountRecovered" placeholder="Auto" readonly />
-      </div>
+            <div class="form-group">
+              <label>Excess Delivery</label>
+              <input type="number" id="advanceExcessDelivery" placeholder="Auto" readonly />
+            </div>
 
-      <div class="form-group">
-        <label>Excess Delivery</label>
-        <input type="number" id="advanceExcessDelivery" placeholder="Auto" readonly />
-      </div>
+            <button type="submit" class="primary-btn" id="advanceSubmitBtn">Add Advance</button>
+          </form>
+        </section>
 
-      <button type="submit" class="primary-btn" id="advanceSubmitBtn">Add Advance</button>
-    </form>
-  </section>
+        <section class="table-card">
+          <div class="table-title">
+            <h3>Advance Records</h3>
+            <span id="advanceCount">0 records</span>
+          </div>
 
-  <section class="table-card">
-    <div class="table-title">
-      <h3>Advance Records</h3>
-      <span id="advanceCount">0 records</span>
-    </div>
-
-    <div class="table-wrapper">
-      <table>
-        <thead>
-          <tr>
-            <th>#</th>
-            <th>Advance Date</th>
-            <th>Person</th>
-            <th>Payment Mode</th>
-            <th>Estimated Price</th>
-            <th>Estimated Kg</th>
-            <th>Amount Received</th>
-            <th>Recovery Date</th>
-            <th>Type of Recovery</th>
-            <th>Gross Weight</th>
-            <th>Net Weight</th>
-            <th>Price</th>
-            <th>Amount Recovered</th>
-            <th>Excess Delivery</th>
-            <th>Action</th>
-          </tr>
-        </thead>
-        <tbody id="advanceTable"></tbody>
-      </table>
-    </div>
-  </section>
-</section>
+          <div class="table-wrapper">
+            <table>
+              <thead>
+                <tr>
+                  <th>#</th>
+                  <th>Advance Date</th>
+                  <th>Person</th>
+                  <th>Payment Mode</th>
+                  <th>Estimated Price</th>
+                  <th>Estimated Kg</th>
+                  <th>Recovery Date</th>
+                  <th>Recovery Type</th>
+                  <th>Gross Weight</th>
+                  <th>Net Weight</th>
+                  <th>Price</th>
+                  <th>Amount</th>
+                  <th>Excess Delivery</th>
+                  <th>Action</th>
+                </tr>
+              </thead>
+              <tbody id="advanceTable"></tbody>
+            </table>
+          </div>
+        </section>
+      </section>
 
       <!-- MONTHLY SUMMARY -->
       <section id="monthly" class="page">

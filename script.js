@@ -17,53 +17,6 @@ let editingRecord = {
 const onlineStatus = document.getElementById("onlineStatus");
 const installBtn = document.getElementById("installBtn");
 
-const salesQuantityInput = document.getElementById("salesQuantity");
-const salesPriceInput = document.getElementById("salesPrice");
-const salesAmountInput = document.getElementById("salesAmount");
-
-[salesQuantityInput, salesPriceInput].forEach(input => {
-  input.addEventListener("input", () => {
-    const qty = Number(salesQuantityInput.value) || 0;
-    const price = Number(salesPriceInput.value) || 0;
-    salesAmountInput.value = (qty * price).toFixed(2);
-  });
-});
-
-const advEstPriceInput = document.getElementById("advanceEstimatedPrice");
-const advEstKgInput = document.getElementById("advanceEstimatedKg");
-const advAmountReceivedInput = document.getElementById("advanceAmountReceived");
-
-const advNetWeightInput = document.getElementById("advanceNetWeight");
-const advPriceInput = document.getElementById("advancePrice");
-const advAmountRecoveredInput = document.getElementById("advanceAmountRecovered");
-const advExcessDeliveryInput = document.getElementById("advanceExcessDelivery");
-
-// Amount Received = Estimated Price * Estimated Kg
-[advEstPriceInput, advEstKgInput].forEach(input => {
-  input.addEventListener("input", () => {
-    const estPrice = Number(advEstPriceInput.value) || 0;
-    const estKg = Number(advEstKgInput.value) || 0;
-    advAmountReceivedInput.value = (estPrice * estKg).toFixed(2);
-    updateExcessDelivery();
-  });
-});
-
-// Amount Recovered = Net Weight * Price
-[advNetWeightInput, advPriceInput].forEach(input => {
-  input.addEventListener("input", () => {
-    const netWeight = Number(advNetWeightInput.value) || 0;
-    const price = Number(advPriceInput.value) || 0;
-    advAmountRecoveredInput.value = (netWeight * price).toFixed(2);
-    updateExcessDelivery();
-  });
-});
-
-// Excess Delivery = Amount Received - Amount Recovered
-function updateExcessDelivery() {
-  const received = Number(advAmountReceivedInput.value) || 0;
-  const recovered = Number(advAmountRecoveredInput.value) || 0;
-  advExcessDeliveryInput.value = (received - recovered).toFixed(2);
-}
 /*
   Replace this email with the email where Jasa Ventures backups should be sent.
 */
@@ -279,10 +232,7 @@ document.getElementById("salesForm").addEventListener("submit", function (event)
   const date = document.getElementById("salesDate").value;
   const description = document.getElementById("salesDescription").value.trim();
   const invoice = document.getElementById("salesInvoice").value.trim();
-  const quantity = Number(document.getElementById("salesQuantity").value) || 0;
-  const price = Number(document.getElementById("salesPrice").value) || 0;
-  const amount = Number(document.getElementById("salesAmount").value) || quantity * price;
- 
+  const amount = Number(document.getElementById("salesAmount").value);
 
   if (!date || !description || amount <= 0) {
     alert("Please enter valid sales details.");
@@ -316,38 +266,37 @@ document.getElementById("salesForm").addEventListener("submit", function (event)
   this.reset();
   document.getElementById("salesDate").valueAsDate = new Date();
 });
-// ------------------- SALES -------------------
-function renderSales() {
-  const tableBody = document.getElementById("salesTable");
-  if (!tableBody) return;
 
-  tableBody.innerHTML = "";
+function renderSales() {
+  const table = document.getElementById("salesTable");
+  const count = document.getElementById("salesCount");
+
+  table.innerHTML = "";
+  count.textContent = `${salesRecords.length} record${salesRecords.length === 1 ? "" : "s"}`;
+
+  if (salesRecords.length === 0) {
+    table.innerHTML = `<tr><td colspan="7" class="empty-row">No sales records yet.</td></tr>`;
+    return;
+  }
 
   salesRecords.forEach((record, index) => {
-    const amount = Number(record.quantity || 0) * Number(record.price || 0);
-
-    const tr = document.createElement("tr");
-    tr.innerHTML = `
-      <td>${index + 1}</td>
-      <td>${formatDate(record.date)}</td>
-      <td>${record.description}</td>
-      <td>${record.invoice || "-"}</td>
-      <td>${record.quantity || 0}</td>
-      <td>${record.price || 0}</td>
-      <td>${amount.toFixed(2)}</td>
-      <td>
-        <div class="action-buttons">
-          <button class="edit-btn" onclick="editSale('${record.id}')">Edit</button>
-          <button class="delete-btn" onclick="deleteSale('${record.id}')">Delete</button>
-        </div>
-      </td>
+    table.innerHTML += `
+      <tr>
+        <td>${index + 1}</td>
+        <td>${formatDate(record.date)}</td>
+        <td>${escapeHTML(record.description)}</td>
+        <td>${escapeHTML(record.invoice || "-")}</td>
+        <td class="credit">${formatMoney(record.amount)}</td>
+        <td>${getMonthName(record.date)}</td>
+        <td>
+          <div class="action-buttons">
+            <button class="edit-btn" onclick="editSale('${record.id}')">Edit</button>
+            <button class="delete-btn" onclick="deleteSale('${record.id}')">Delete</button>
+          </div>
+        </td>
+      </tr>
     `;
-
-    tableBody.appendChild(tr);
-    record.amount = amount; // auto-update amount
   });
-
-  updateGrossProfit();
 }
 
 function deleteSale(id) {
@@ -546,24 +495,23 @@ function deleteCostSale(id) {
 /* =========================
    ADVANCE
 ========================= */
-// ------------------- ADVANCE -------------------
 document.getElementById("advanceForm").addEventListener("submit", function (event) {
   event.preventDefault();
+
+  updateAdvanceCalculations();
 
   const advanceDate = document.getElementById("advanceDate").value;
   const person = document.getElementById("advancePerson").value.trim();
   const paymentMode = document.getElementById("advancePaymentMode").value;
-  const estimatedPrice = Number(document.getElementById("advanceEstimatedPrice").value) || 0;
-  const estimatedKg = Number(document.getElementById("advanceEstimatedKg").value) || 0;
-  const amountReceived = estimatedPrice * estimatedKg;
-
+  const estimatedPrice = Number(document.getElementById("advanceEstimatedPrice").value);
+  const estimatedKg = Number(document.getElementById("advanceEstimatedKg").value);
   const recoveryDate = document.getElementById("advanceRecoveryDate").value;
   const recoveryType = document.getElementById("advanceRecoveryType").value;
-  const grossWeight = Number(document.getElementById("advanceGrossWeight").value) || 0;
-  const netWeight = Number(document.getElementById("advanceNetWeight").value) || 0;
-  const price = Number(document.getElementById("advancePrice").value) || 0;
-  const amountRecovered = netWeight * price;
-  const excessDelivery = amountReceived - amountRecovered;
+  const grossWeight = Number(document.getElementById("advanceGrossWeight").value);
+  const netWeight = Number(document.getElementById("advanceNetWeight").value);
+  const price = Number(document.getElementById("advancePrice").value);
+  const amount = netWeight * price;
+  const excessDelivery = netWeight - estimatedKg;
 
   if (
     !advanceDate ||
@@ -571,8 +519,11 @@ document.getElementById("advanceForm").addEventListener("submit", function (even
     !paymentMode ||
     !recoveryDate ||
     !recoveryType ||
-    estimatedPrice <= 0 ||
-    estimatedKg <= 0
+    estimatedPrice < 0 ||
+    estimatedKg < 0 ||
+    grossWeight < 0 ||
+    netWeight < 0 ||
+    price < 0
   ) {
     alert("Please enter valid advance details.");
     return;
@@ -585,18 +536,17 @@ document.getElementById("advanceForm").addEventListener("submit", function (even
     paymentMode,
     estimatedPrice,
     estimatedKg,
-    amountReceived,
     recoveryDate,
     recoveryType,
     grossWeight,
     netWeight,
     price,
-    amountRecovered,
+    amount,
     excessDelivery
   };
 
   if (editingRecord.advance) {
-    advanceRecords = advanceRecords.map(record =>
+    advanceRecords = advanceRecords.map((record) =>
       String(record.id) === String(editingRecord.advance) ? newRecord : record
     );
     editingRecord.advance = null;
@@ -606,57 +556,53 @@ document.getElementById("advanceForm").addEventListener("submit", function (even
   }
 
   saveAll();
-  renderAdvance();
+  renderAll();
 
   this.reset();
   document.getElementById("advanceDate").valueAsDate = new Date();
   document.getElementById("advanceRecoveryDate").valueAsDate = new Date();
-  document.getElementById("advanceAmountReceived").value = "";
-  document.getElementById("advanceAmountRecovered").value = "";
+  document.getElementById("advanceAmount").value = "";
   document.getElementById("advanceExcessDelivery").value = "";
 });
 
-// ------------------- ADVANCE RENDER -------------------
 function renderAdvance() {
-  const tableBody = document.getElementById("advanceTable");
-  if (!tableBody) return;
+  const table = document.getElementById("advanceTable");
+  const count = document.getElementById("advanceCount");
 
-  tableBody.innerHTML = "";
+  if (!table || !count) return;
+
+  table.innerHTML = "";
+  count.textContent = `${advanceRecords.length} record${advanceRecords.length === 1 ? "" : "s"}`;
+
+  if (advanceRecords.length === 0) {
+    table.innerHTML = `<tr><td colspan="14" class="empty-row">No advance records yet.</td></tr>`;
+    return;
+  }
 
   advanceRecords.forEach((record, index) => {
-    const amountReceived = Number(record.estimatedPrice || 0) * Number(record.estimatedKg || 0);
-    const amountRecovered = Number(record.netWeight || 0) * Number(record.price || 0);
-    const excessDelivery = amountReceived - amountRecovered;
-
-    const tr = document.createElement("tr");
-    tr.innerHTML = `
-      <td>${index + 1}</td>
-      <td>${formatDate(record.advanceDate)}</td>
-      <td>${record.person}</td>
-      <td>${record.paymentMode}</td>
-      <td>${record.estimatedPrice.toFixed(2)}</td>
-      <td>${record.estimatedKg.toFixed(2)}</td>
-      <td>${amountReceived.toFixed(2)}</td>
-      <td>${formatDate(record.recoveryDate)}</td>
-      <td>${record.recoveryType}</td>
-      <td>${record.grossWeight.toFixed(2)}</td>
-      <td>${record.netWeight.toFixed(2)}</td>
-      <td>${record.price.toFixed(2)}</td>
-      <td>${amountRecovered.toFixed(2)}</td>
-      <td>${excessDelivery.toFixed(2)}</td>
-      <td>
-        <div class="action-buttons">
-          <button class="edit-btn" onclick="editAdvance('${record.id}')">Edit</button>
-          <button class="delete-btn" onclick="deleteAdvance('${record.id}')">Delete</button>
-        </div>
-      </td>
+    table.innerHTML += `
+      <tr>
+        <td>${index + 1}</td>
+        <td>${formatDate(record.advanceDate)}</td>
+        <td>${escapeHTML(record.person)}</td>
+        <td>${escapeHTML(record.paymentMode)}</td>
+        <td>${formatMoney(record.estimatedPrice)}</td>
+        <td>${formatNumber(record.estimatedKg)}</td>
+        <td>${formatDate(record.recoveryDate)}</td>
+        <td>${escapeHTML(record.recoveryType)}</td>
+        <td>${formatNumber(record.grossWeight)}</td>
+        <td>${formatNumber(record.netWeight)}</td>
+        <td>${formatMoney(record.price)}</td>
+        <td class="credit">${formatMoney(record.amount)}</td>
+        <td class="${record.excessDelivery >= 0 ? "positive" : "negative"}">${formatNumber(record.excessDelivery)}</td>
+        <td>
+          <div class="action-buttons">
+            <button class="edit-btn" onclick="editAdvance('${record.id}')">Edit</button>
+            <button class="delete-btn" onclick="deleteAdvance('${record.id}')">Delete</button>
+          </div>
+        </td>
+      </tr>
     `;
-    tableBody.appendChild(tr);
-
-    // Update record with calculated fields
-    record.amountReceived = amountReceived;
-    record.amountRecovered = amountRecovered;
-    record.excessDelivery = excessDelivery;
   });
 }
 
@@ -788,7 +734,7 @@ function renderMonthlySummary() {
 
   months.forEach((month) => {
     const data = monthMap[month];
-    const grossProfit = data.costSales - data.purchases + data.sales;
+    const grossProfit = data.costSales + data.purchases - data.sales;
 
     table.innerHTML += `
       <tr>
@@ -890,7 +836,7 @@ function generateFullCSV() {
 
   Object.keys(monthMap).sort().forEach((month) => {
     const data = monthMap[month];
-    const grossProfit = data.costSales - data.purchases + data.sales;
+    const grossProfit = data.costSales + data.purchases - data.sales;
     csv += `${formatMonthKey(month)},${data.sales},${data.purchases},${data.costSales},${grossProfit}\n`;
   });
 
@@ -988,7 +934,7 @@ function createSummarySheet(workbook, staffName, totals) {
   sheet.addRow(["Staff Name", staffName]);
   sheet.addRow(["Generated On", formatDateTimeForReport(new Date())]);
   sheet.addRow(["Date Format", "DD/MM/YYYY"]);
-  sheet.addRow(["Gross Profit", "Cost of Sales - Purchases + Sales"]);
+  sheet.addRow(["Gross Profit Formula", "Cost of Sales + Purchases - Sales"]);
   sheet.addRow([]);
   sheet.addRow(["Total Sales", Number(totals.sales || 0)]);
   sheet.addRow(["Total Purchases", Number(totals.purchases || 0)]);
@@ -1835,7 +1781,7 @@ function getMonthlyRows() {
 
   return Object.keys(monthMap).sort().map((month) => {
     const data = monthMap[month];
-    const grossProfit = data.costSales - data.purchases + data.sales;
+    const grossProfit = data.costSales + data.purchases - data.sales;
 
     return [
       formatMonthKey(month),
@@ -2002,7 +1948,7 @@ function getMonthlyTextRows() {
 
   return Object.keys(monthMap).sort().map((month) => {
     const data = monthMap[month];
-    const grossProfit = data.costSales - data.purchases + data.sales;
+    const grossProfit = data.costSales + data.purchases - data.sales;
 
     return [
       formatMonthKey(month),
@@ -2055,7 +2001,7 @@ function getTotals() {
   const purchases = sumRecords(purchaseRecords);
   const costSales = sumRecords(costSalesRecords);
   const advances = sumRecords(advanceRecords);
-  const grossProfit = costSales - purchases + sales;
+  const grossProfit = costSales + purchases - sales;
 
   const credit = ledgerRecords
     .filter((record) => record.type === "credit")
