@@ -1,0 +1,20 @@
+JASA VENTURES FULL BACKUP
+
+LEDGER
+Date,Description,Credit,Debit,Balance
+21/05/2026,"reed",1000,,1000
+
+SALES
+Date,Description,Invoice,Amount,Month
+
+PURCHASES
+Date,Type,Description,Receipt,Quantity,Price,Amount,Month
+
+COST OF SALES
+Date,Description,Reference,Quantity,Price,Amount,Month
+
+ADVANCE RECORDS
+Advance Date,Person,Payment Mode,Estimated Price,Estimated Kg,Recovery Date,Recovery Type,Gross Weight,Net Weight,Price,Amount,Excess Delivery
+
+MONTHLY SUMMARY
+Month,Sales,Purchases,Cost of Sales,Gross Profit

@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>Jasa Ventures Backup Report</title>
+<style>
+  body {
+    font-family: Arial, Helvetica, sans-serif;
+    color: #1f2937;
+    margin: 24px;
+    background: #ffffff;
+  }
+
+  .report-header {
+    background: linear-gradient(135deg, #243865, #16223d);
+    color: #ffffff;
+    padding: 24px;
+    border-radius: 14px;
+    margin-bottom: 20px;
+    border-bottom: 6px solid #e7ad4a;
+  }
+
+  .report-header h1 {
+    margin: 0 0 8px;
+    font-size: 28px;
+    letter-spacing: 0.4px;
+  }
+
+  .meta {
+    margin: 5px 0;
+    font-size: 14px;
+  }
+
+  .summary-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 12px;
+    margin-bottom: 20px;
+  }
+
+  .summary-box {
+    border: 1px solid #d9dee8;
+    background: #edf5ff;
+    padding: 14px;
+    border-radius: 12px;
+    border-left: 5px solid #e7ad4a;
+  }
+
+  .summary-box strong {
+    display: block;
+    color: #243865;
+    font-size: 13px;
+    text-transform: uppercase;
+  }
+
+  .summary-box span {
+    display: block;
+    margin-top: 7px;
+    font-size: 20px;
+    font-weight: bold;
+  }
+
+  h2 {
+    color: #243865;
+    margin-top: 28px;
+    border-left: 6px solid #e7ad4a;
+    padding-left: 10px;
+  }
+
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-bottom: 22px;
+    font-size: 12px;
+    border: 1px solid #d9dee8;
+  }
+
+  th {
+    background: #243865;
+    color: #ffffff;
+    padding: 10px;
+    border: 1px solid #16223d;
+    text-align: center;
+    font-weight: bold;
+  }
+
+  td {
+    padding: 9px;
+    border: 1px solid #d9dee8;
+    text-align: center;
+  }
+
+  tr:nth-child(even) td {
+    background: #f8fbff;
+  }
+
+  tr:nth-child(odd) td {
+    background: #ffffff;
+  }
+
+  .credit,
+  .positive {
+    color: #0f8a3a;
+    font-weight: bold;
+  }
+
+  .debit,
+  .negative {
+    color: #c62828;
+    font-weight: bold;
+  }
+
+  .formula-note {
+    background: #fff4e0;
+    border: 1px solid #e7ad4a;
+    color: #243865;
+    padding: 13px;
+    border-radius: 10px;
+    margin-bottom: 18px;
+    font-weight: bold;
+  }
+
+  @media print {
+    body {
+      margin: 10mm;
+    }
+
+    .report-header {
+      border-radius: 0;
+    }
+
+    .summary-grid {
+      grid-template-columns: repeat(2, 1fr);
+    }
+
+    table {
+      page-break-inside: auto;
+    }
+
+    tr {
+      page-break-inside: avoid;
+      page-break-after: auto;
+    }
+  }
+</style>
+</head>
+<body>
+  <div class="report-header">
+    <h1>Jasa Ventures Business Backup Report</h1>
+    <p class="meta"><strong>Staff Name:</strong> u</p>
+    <p class="meta"><strong>Generated On:</strong> 21/05/2026 10:14</p>
+    <p class="meta"><strong>Date Format:</strong> DD/MM/YYYY</p>
+  </div>
+
+  <div class="summary-grid">
+    <div class="summary-box"><strong>Total Sales</strong><span>0</span></div>
+    <div class="summary-box"><strong>Total Purchases</strong><span>0</span></div>
+    <div class="summary-box"><strong>Total Cost of Sales</strong><span>0</span></div>
+    <div class="summary-box"><strong>Gross Profit</strong><span>0</span></div>
+    <div class="summary-box"><strong>Total Advances</strong><span>0</span></div>
+    <div class="summary-box"><strong>Ledger Credit</strong><span>1,000</span></div>
+    <div class="summary-box"><strong>Ledger Debit</strong><span>0</span></div>
+    <div class="summary-box"><strong>Ledger Balance</strong><span>1,000</span></div>
+    <div class="summary-box"><strong>Total Records</strong><span>1</span></div>
+  </div>
+
+  <div class="formula-note">
+    Gross Profit Formula Used: Cost of Sales + Purchases - Sales
+  </div>
+
+  
+    <h2>Ledger Records</h2>
+    <table>
+      <thead>
+        <tr><th>#</th><th>Date</th><th>Description</th><th>Credit</th><th>Debit</th><th>Balance</th></tr>
+      </thead>
+      <tbody>
+        
+          <tr>
+            <td>1</td><td>21/05/2026</td><td>reed</td><td><span class="credit">1,000</span></td><td>-</td><td>1,000</td>
+          </tr>
+        
+      </tbody>
+    </table>
+  
+  <h2>Sales Records</h2><p>No records available.</p>
+  <h2>Purchase Records</h2><p>No records available.</p>
+  <h2>Cost of Sales Records</h2><p>No records available.</p>
+  <h2>Advance Records</h2><p>No records available.</p>
+  <h2>Monthly Summary</h2><p>No records available.</p>
+</body>
+</html>

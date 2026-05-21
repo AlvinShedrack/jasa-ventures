@@ -1352,7 +1352,6 @@ async function sendBackupByEmailAndFormspree() {
 
   alert("Backup text was sent to Formspree. Gmail/mail app has opened. CSV and styled XLSX have also been downloaded for manual attachment.");
 }
-
 async function sendTabledTextToFormspree(staffName, recipientEmail, subject, tabledText, htmlReport, csv) {
   if (!navigator.onLine) {
     alert("You are offline. Email app will open, but Formspree cannot receive backup until you are online.");
@@ -1364,10 +1363,11 @@ async function sendTabledTextToFormspree(staffName, recipientEmail, subject, tab
     staff_name: staffName,
     recipient_email: recipientEmail,
     subject: subject,
-    backup_date: new Date().toLocaleString(),
-    tabled_text_backup: tabledText,
-    html_table_backup: htmlReport,
-    csv_text_backup: csv
+    backup_date: formatDateTimeForReport(new Date()),
+
+    message: tabledText,
+
+    note: "CSV and styled XLSX were downloaded from the app. Attach them manually in Gmail if needed."
   };
 
   try {
@@ -1799,7 +1799,7 @@ function buildPlainTextBackup(staffName) {
   return `
 JASA VENTURES BACKUP REPORT
 Staff Name: ${staffName}
-Generated On: ${new Date().toLocaleString()}
+Generated On: ${formatDateTimeForReport(new Date())}
 Date Format: DD/MM/YYYY
 
 SUMMARY
