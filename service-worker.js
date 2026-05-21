@@ -1,4 +1,4 @@
-﻿const CACHE_VERSION = "v6";
+﻿const CACHE_VERSION = "v8";
 const PRECACHE = `jasa-ventures-precache-${CACHE_VERSION}`;
 const RUNTIME = `jasa-ventures-runtime-${CACHE_VERSION}`;
 
@@ -11,6 +11,7 @@ const PRECACHE_URLS = [
   "./offline.html",
   "./assets/logo.png",
   "./assets/icon-192.png",
+  "./libs/exceljs.min.js",
   "./assets/icon-512.png"
 ];
 

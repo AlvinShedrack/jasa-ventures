@@ -852,16 +852,445 @@ function downloadAllCSV() {
   downloadFile(generateFullCSV(), "jasa_ventures_full_backup.csv", "text/csv");
 }
 
-function downloadStyledExcelBackup() {
+async function downloadStyledExcelBackup() {
   if (!hasAnyRecord()) {
     alert("No records available for download.");
     return;
   }
 
-  const html = buildStyledBackupHTML("Downloaded Backup");
-  downloadFile(html, "jasa_ventures_styled_backup.xls", "application/vnd.ms-excel");
+  if (typeof ExcelJS === "undefined") {
+    alert("ExcelJS library is missing. Please make sure libs/exceljs.min.js is added and linked in index.html.");
+    return;
+  }
+
+  const staffName = prompt("Enter staff name for the Excel report:", "Downloaded Backup") || "Downloaded Backup";
+
+  const workbook = new ExcelJS.Workbook();
+
+  workbook.creator = "Jasa Ventures";
+  workbook.lastModifiedBy = staffName;
+  workbook.created = new Date();
+  workbook.modified = new Date();
+
+  workbook.properties.date1904 = false;
+
+  const totals = getTotals();
+
+  createSummarySheet(workbook, staffName, totals);
+  createLedgerSheet(workbook);
+  createSalesSheet(workbook);
+  createPurchaseSheet(workbook);
+  createCostSalesSheet(workbook);
+  createAdvanceSheet(workbook);
+  createMonthlySheet(workbook);
+
+  const buffer = await workbook.xlsx.writeBuffer();
+
+  const blob = new Blob([buffer], {
+    type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+  });
+
+  const url = URL.createObjectURL(blob);
+
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = `jasa_ventures_styled_backup_${formatDateForFile(new Date())}.xlsx`;
+  link.click();
+
+  URL.revokeObjectURL(url);
 }
 
+function createSummarySheet(workbook, staffName, totals) {
+  const sheet = workbook.addWorksheet("Summary", {
+    views: [{ state: "frozen", ySplit: 4 }]
+  });
+
+  sheet.columns = [
+    { header: "Item", key: "item", width: 32 },
+    { header: "Value", key: "value", width: 28 }
+  ];
+
+  sheet.mergeCells("A1:B1");
+  sheet.getCell("A1").value = "JASA VENTURES BUSINESS BACKUP REPORT";
+  sheet.getCell("A1").font = {
+    name: "Calibri",
+    size: 18,
+    bold: true,
+    color: { argb: "FFFFFFFF" }
+  };
+  sheet.getCell("A1").alignment = {
+    horizontal: "center",
+    vertical: "middle"
+  };
+  sheet.getCell("A1").fill = {
+    type: "pattern",
+    pattern: "solid",
+    fgColor: { argb: "FF243865" }
+  };
+
+  sheet.getRow(1).height = 32;
+
+  sheet.addRow([]);
+  sheet.addRow(["Staff Name", staffName]);
+  sheet.addRow(["Generated On", formatDateTimeForReport(new Date())]);
+  sheet.addRow(["Date Format", "DD/MM/YYYY"]);
+  sheet.addRow(["Gross Profit Formula", "Cost of Sales + Purchases - Sales"]);
+  sheet.addRow([]);
+  sheet.addRow(["Total Sales", Number(totals.sales || 0)]);
+  sheet.addRow(["Total Purchases", Number(totals.purchases || 0)]);
+  sheet.addRow(["Total Cost of Sales", Number(totals.costSales || 0)]);
+  sheet.addRow(["Gross Profit", Number(totals.grossProfit || 0)]);
+  sheet.addRow(["Total Advances", Number(totals.advances || 0)]);
+  sheet.addRow(["Ledger Credit", Number(totals.credit || 0)]);
+  sheet.addRow(["Ledger Debit", Number(totals.debit || 0)]);
+  sheet.addRow(["Ledger Balance", Number(totals.balance || 0)]);
+  sheet.addRow(["Total Records", Number(totals.records || 0)]);
+
+  styleReportSheet(sheet, {
+    titleRows: [1],
+    headerRow: null,
+    moneyColumns: ["B"]
+  });
+
+  sheet.eachRow((row, rowNumber) => {
+    if (rowNumber >= 7) {
+      row.getCell(2).numFmt = "#,##0.00";
+    }
+  });
+}
+
+function createLedgerSheet(workbook) {
+  const sheet = workbook.addWorksheet("Ledger", {
+    views: [{ state: "frozen", ySplit: 1 }]
+  });
+
+  sheet.columns = [
+    { header: "#", key: "index", width: 8 },
+    { header: "Date", key: "date", width: 16 },
+    { header: "Description", key: "description", width: 36 },
+    { header: "Credit", key: "credit", width: 16 },
+    { header: "Debit", key: "debit", width: 16 },
+    { header: "Balance", key: "balance", width: 16 }
+  ];
+
+  let balance = 0;
+
+  ledgerRecords.forEach((record, index) => {
+    let credit = null;
+    let debit = null;
+
+    if (record.type === "credit") {
+      credit = Number(record.amount);
+      balance += Number(record.amount);
+    } else {
+      debit = Number(record.amount);
+      balance -= Number(record.amount);
+    }
+
+    sheet.addRow({
+      index: index + 1,
+      date: formatDate(record.date),
+      description: record.description,
+      credit,
+      debit,
+      balance
+    });
+  });
+
+  styleReportSheet(sheet, {
+    headerRow: 1,
+    moneyColumns: ["D", "E", "F"]
+  });
+}
+
+function createSalesSheet(workbook) {
+  const sheet = workbook.addWorksheet("Sales", {
+    views: [{ state: "frozen", ySplit: 1 }]
+  });
+
+  sheet.columns = [
+    { header: "#", key: "index", width: 8 },
+    { header: "Date", key: "date", width: 16 },
+    { header: "Description", key: "description", width: 36 },
+    { header: "Invoice No.", key: "invoice", width: 18 },
+    { header: "Amount", key: "amount", width: 16 },
+    { header: "Month", key: "month", width: 20 }
+  ];
+
+  salesRecords.forEach((record, index) => {
+    sheet.addRow({
+      index: index + 1,
+      date: formatDate(record.date),
+      description: record.description,
+      invoice: record.invoice || "-",
+      amount: Number(record.amount),
+      month: getMonthName(record.date)
+    });
+  });
+
+  styleReportSheet(sheet, {
+    headerRow: 1,
+    moneyColumns: ["E"]
+  });
+}
+
+function createPurchaseSheet(workbook) {
+  const sheet = workbook.addWorksheet("Purchases", {
+    views: [{ state: "frozen", ySplit: 1 }]
+  });
+
+  sheet.columns = [
+    { header: "#", key: "index", width: 8 },
+    { header: "Date", key: "date", width: 16 },
+    { header: "Type", key: "type", width: 18 },
+    { header: "Description", key: "description", width: 36 },
+    { header: "Receipt No.", key: "receipt", width: 18 },
+    { header: "Quantity", key: "quantity", width: 14 },
+    { header: "Price", key: "price", width: 16 },
+    { header: "Amount", key: "amount", width: 16 },
+    { header: "Month", key: "month", width: 20 }
+  ];
+
+  purchaseRecords.forEach((record, index) => {
+    sheet.addRow({
+      index: index + 1,
+      date: formatDate(record.date),
+      type: record.type || "Other",
+      description: record.description,
+      receipt: record.receipt || "-",
+      quantity: Number(record.quantity),
+      price: Number(record.price),
+      amount: Number(record.amount),
+      month: getMonthName(record.date)
+    });
+  });
+
+  styleReportSheet(sheet, {
+    headerRow: 1,
+    moneyColumns: ["G", "H"],
+    numberColumns: ["F"]
+  });
+}
+
+function createCostSalesSheet(workbook) {
+  const sheet = workbook.addWorksheet("Cost of Sales", {
+    views: [{ state: "frozen", ySplit: 1 }]
+  });
+
+  sheet.columns = [
+    { header: "#", key: "index", width: 8 },
+    { header: "Date", key: "date", width: 16 },
+    { header: "Description", key: "description", width: 36 },
+    { header: "Reference No.", key: "reference", width: 18 },
+    { header: "Quantity", key: "quantity", width: 14 },
+    { header: "Price", key: "price", width: 16 },
+    { header: "Amount", key: "amount", width: 16 },
+    { header: "Month", key: "month", width: 20 }
+  ];
+
+  costSalesRecords.forEach((record, index) => {
+    sheet.addRow({
+      index: index + 1,
+      date: formatDate(record.date),
+      description: record.description,
+      reference: record.reference || "-",
+      quantity: Number(record.quantity),
+      price: Number(record.price),
+      amount: Number(record.amount),
+      month: getMonthName(record.date)
+    });
+  });
+
+  styleReportSheet(sheet, {
+    headerRow: 1,
+    moneyColumns: ["F", "G"],
+    numberColumns: ["E"]
+  });
+}
+
+function createAdvanceSheet(workbook) {
+  const sheet = workbook.addWorksheet("Advance", {
+    views: [{ state: "frozen", ySplit: 1 }]
+  });
+
+  sheet.columns = [
+    { header: "#", key: "index", width: 8 },
+    { header: "Advance Date", key: "advanceDate", width: 16 },
+    { header: "Person", key: "person", width: 24 },
+    { header: "Payment Mode", key: "paymentMode", width: 18 },
+    { header: "Estimated Price", key: "estimatedPrice", width: 18 },
+    { header: "Estimated Kg", key: "estimatedKg", width: 16 },
+    { header: "Recovery Date", key: "recoveryDate", width: 16 },
+    { header: "Recovery Type", key: "recoveryType", width: 20 },
+    { header: "Gross Weight", key: "grossWeight", width: 16 },
+    { header: "Net Weight", key: "netWeight", width: 16 },
+    { header: "Price", key: "price", width: 16 },
+    { header: "Amount", key: "amount", width: 16 },
+    { header: "Excess Delivery", key: "excessDelivery", width: 18 }
+  ];
+
+  advanceRecords.forEach((record, index) => {
+    sheet.addRow({
+      index: index + 1,
+      advanceDate: formatDate(record.advanceDate),
+      person: record.person,
+      paymentMode: record.paymentMode,
+      estimatedPrice: Number(record.estimatedPrice),
+      estimatedKg: Number(record.estimatedKg),
+      recoveryDate: formatDate(record.recoveryDate),
+      recoveryType: record.recoveryType,
+      grossWeight: Number(record.grossWeight),
+      netWeight: Number(record.netWeight),
+      price: Number(record.price),
+      amount: Number(record.amount),
+      excessDelivery: Number(record.excessDelivery)
+    });
+  });
+
+  styleReportSheet(sheet, {
+    headerRow: 1,
+    moneyColumns: ["E", "K", "L"],
+    numberColumns: ["F", "I", "J", "M"]
+  });
+}
+
+function createMonthlySheet(workbook) {
+  const sheet = workbook.addWorksheet("Monthly Summary", {
+    views: [{ state: "frozen", ySplit: 1 }]
+  });
+
+  sheet.columns = [
+    { header: "Month", key: "month", width: 22 },
+    { header: "Sales", key: "sales", width: 18 },
+    { header: "Purchases", key: "purchases", width: 18 },
+    { header: "Cost of Sales", key: "costSales", width: 18 },
+    { header: "Gross Profit", key: "grossProfit", width: 18 }
+  ];
+
+  const monthMap = buildMonthMap();
+
+  Object.keys(monthMap).sort().forEach((month) => {
+    const data = monthMap[month];
+    const grossProfit = Number(data.costSales) + Number(data.purchases) - Number(data.sales);
+
+    sheet.addRow({
+      month: formatMonthKey(month),
+      sales: Number(data.sales),
+      purchases: Number(data.purchases),
+      costSales: Number(data.costSales),
+      grossProfit
+    });
+  });
+
+  styleReportSheet(sheet, {
+    headerRow: 1,
+    moneyColumns: ["B", "C", "D", "E"]
+  });
+}
+
+function styleReportSheet(sheet, options = {}) {
+  const headerRowNumber = options.headerRow || 1;
+  const moneyColumns = options.moneyColumns || [];
+  const numberColumns = options.numberColumns || [];
+
+  sheet.properties.defaultRowHeight = 22;
+
+  sheet.eachRow((row, rowNumber) => {
+    row.eachCell((cell) => {
+      cell.font = {
+        name: "Calibri",
+        size: 11,
+        color: { argb: "FF1F2937" }
+      };
+
+      cell.alignment = {
+        vertical: "middle",
+        horizontal: "center",
+        wrapText: true
+      };
+
+      cell.border = {
+        top: { style: "thin", color: { argb: "FFD9DEE8" } },
+        left: { style: "thin", color: { argb: "FFD9DEE8" } },
+        bottom: { style: "thin", color: { argb: "FFD9DEE8" } },
+        right: { style: "thin", color: { argb: "FFD9DEE8" } }
+      };
+
+      if (rowNumber % 2 === 0 && rowNumber !== headerRowNumber) {
+        cell.fill = {
+          type: "pattern",
+          pattern: "solid",
+          fgColor: { argb: "FFF8FBFF" }
+        };
+      }
+    });
+  });
+
+  const headerRow = sheet.getRow(headerRowNumber);
+
+  headerRow.height = 26;
+
+  headerRow.eachCell((cell) => {
+    cell.font = {
+      name: "Calibri",
+      size: 11,
+      bold: true,
+      color: { argb: "FFFFFFFF" }
+    };
+
+    cell.alignment = {
+      vertical: "middle",
+      horizontal: "center",
+      wrapText: true
+    };
+
+    cell.fill = {
+      type: "pattern",
+      pattern: "solid",
+      fgColor: { argb: "FF243865" }
+    };
+
+    cell.border = {
+      top: { style: "thin", color: { argb: "FF16223D" } },
+      left: { style: "thin", color: { argb: "FF16223D" } },
+      bottom: { style: "thin", color: { argb: "FF16223D" } },
+      right: { style: "thin", color: { argb: "FF16223D" } }
+    };
+  });
+
+  moneyColumns.forEach((columnLetter) => {
+    sheet.getColumn(columnLetter).eachCell((cell, rowNumber) => {
+      if (rowNumber !== headerRowNumber && typeof cell.value === "number") {
+        cell.numFmt = "#,##0.00";
+        cell.font = {
+          name: "Calibri",
+          size: 11,
+          bold: true,
+          color: { argb: "FF0F8A3A" }
+        };
+      }
+    });
+  });
+
+  numberColumns.forEach((columnLetter) => {
+    sheet.getColumn(columnLetter).eachCell((cell, rowNumber) => {
+      if (rowNumber !== headerRowNumber && typeof cell.value === "number") {
+        cell.numFmt = "#,##0.00";
+      }
+    });
+  });
+
+  sheet.autoFilter = {
+    from: {
+      row: headerRowNumber,
+      column: 1
+    },
+    to: {
+      row: headerRowNumber,
+      column: sheet.columnCount
+    }
+  };
+}
 function printStyledPDF() {
   if (!hasAnyRecord()) {
     alert("No records available to print.");
@@ -881,7 +1310,6 @@ function printStyledPDF() {
     printWindow.print();
   };
 }
-
 async function sendBackupByEmailAndFormspree() {
   if (!hasAnyRecord()) {
     alert("No records available for sending.");
@@ -907,22 +1335,22 @@ async function sendBackupByEmailAndFormspree() {
   const htmlReport = buildStyledBackupHTML(staffName.trim());
   const csv = generateFullCSV();
 
-  /*
-    Because Formspree does not allow uploads on your plan:
-    1. This sends tabled backup text to Formspree.
-    2. This opens Gmail/mail app with subject and body ready.
-    3. This downloads CSV, Excel and HTML report so the sender can attach them manually if needed.
-  */
-
   downloadFile(csv, "jasa_ventures_backup.csv", "text/csv");
-  downloadFile(htmlReport, "jasa_ventures_styled_excel_backup.xls", "application/vnd.ms-excel");
-  openPDFDownloadWindow(htmlReport);
 
-  await sendTabledTextToFormspree(staffName.trim(), recipientEmail, subject, tabledText, htmlReport, csv);
+  await downloadStyledExcelBackup();
+
+  await sendTabledTextToFormspree(
+    staffName.trim(),
+    recipientEmail,
+    subject,
+    tabledText,
+    htmlReport,
+    csv
+  );
 
   openEmailApp(recipientEmail, subject, tabledText);
 
-  alert("Backup text was sent to Formspree. Gmail/mail app has opened with the subject and body ready. The CSV, Excel and report files have also been downloaded for manual attachment.");
+  alert("Backup text was sent to Formspree. Gmail/mail app has opened. CSV and styled XLSX have also been downloaded for manual attachment.");
 }
 
 async function sendTabledTextToFormspree(staffName, recipientEmail, subject, tabledText, htmlReport, csv) {
