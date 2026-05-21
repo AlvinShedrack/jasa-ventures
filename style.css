@@ -23,7 +23,12 @@ body {
   background: linear-gradient(135deg, var(--bg), #b9d8ff);
   color: var(--text);
 }
-
+    footer {
+      text-align: center;
+      margin: 12px 0 0;
+      font-size: 1.0rem;
+      color: #ff0000;
+    }
 .app-shell {
   width: min(1280px, 100%);
   margin: 0 auto;

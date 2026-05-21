@@ -1392,7 +1392,6 @@ async function sendBackupByEmailAndFormspree() {
   const htmlReport = buildStyledBackupHTML(staffName.trim());
   const csv = generateFullCSV();
 
-  downloadFile(csv, "jasa_ventures_backup.csv", "text/csv");
 
 
 
@@ -1870,7 +1869,7 @@ ${buildTextSection("ADVANCE RECORDS", ["#", "Advance Date", "Person", "Mode", "E
 ${buildTextSection("MONTHLY SUMMARY", ["Month", "Sales", "Purchases", "Cost of Sales", "Gross Profit"], getMonthlyTextRows())}
 
 NOTE:
-CSV, Styled Excel and PDF-style report files have been downloaded from the app.
+CSV,  and PDF-style report files have been downloaded from the app.
 Attach them manually if Gmail asks for attachments.
 `;
 }
