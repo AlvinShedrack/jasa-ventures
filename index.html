@@ -503,12 +503,11 @@
       <!-- MONTHLY SUMMARY -->
       <section id="monthly" class="page">
         <section class="actions-card">
-          <button onclick="downloadAllCSV()">Download CSV Backup</button>
-          <button onclick="printStyledPDF()">Download PDF</button>
-          <button onclick="sendBackupByEmailAndFormspree()">Send Backup</button>
-          <button onclick="exportJSONBackup()">Export App Data</button>
-          <button onclick="triggerImport()">Import / Merge Data</button>
-          <button onclick="installApp()" id="installBtn" class="install-btn">Install App</button>
+          <button onclick="downloadAllCSV()"id="downloadBtn" class="download-btn">Download CSV Backup</button>
+          <button onclick="printStyledPDF()"id="downloadBtn" class="download-btn">Download PDF</button>
+          <button onclick="sendBackupByEmailAndFormspree()"id="backupBtn" class="backup-btn">Send Backup</button>
+          <button onclick="exportJSONBackup()"id="importBtn" class="import-btn">Export App Data</button>
+          <button onclick="triggerImport()"id="importBtn" class="import-btn">Import and Merge Data</button>
           <button onclick="clearAllRecords()" class="danger-btn">Clear All Records</button>
 
           <input

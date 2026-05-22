@@ -251,8 +251,16 @@ button {
   gap: 10px;
 }
 
-.install-btn {
+.download-btn {
   background: var(--success);
+}
+
+.import-btn {
+  background: var(--accent)
+}
+
+.backup-btn {
+  background: var(--bg)
 }
 
 .danger-btn {
