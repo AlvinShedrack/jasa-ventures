@@ -900,13 +900,13 @@ function generateFullCSV() {
   return csv;
 }
 
-function downloadAllCSV() {
+async function downloadAllCSV() {
   if (!hasAnyRecord()) {
     alert("No records available for download.");
     return;
   }
 
-  downloadFile(generateFullCSV(), "jasa_ventures_full_backup.csv", "text/csv");
+  downloadFile(generateFullCSV(), `jasa_ventures_full_backup_${formatDateForFile()}.csv`, "text/csv");
 }
 
 async function downloadStyledExcelBackup() {
@@ -1354,18 +1354,24 @@ function printStyledPDF() {
     return;
   }
 
-  const staffName = prompt("Enter staff name for the PDF report:", "");
+  const staffName = prompt("Enter staff name for the PDF report:", "Not Provided");
   const reportHTML = buildStyledBackupHTML(staffName || "Not Provided");
 
-  const printWindow = window.open("", "_blank");
-  printWindow.document.open();
-  printWindow.document.write(reportHTML);
-  printWindow.document.close();
+  // Generate filename with date & time
+  const filename = `jasa_ventures_backup_${formatDateForFile()}.pdf`;
 
-  printWindow.onload = function () {
-    printWindow.focus();
-    printWindow.print();
-  };
+  // Create a jsPDF instance
+  const doc = new jsPDF('p', 'pt', 'a4');
+
+  // Convert HTML to PDF using fromHTML or html() method
+  doc.html(reportHTML, {
+    callback: function (pdf) {
+      pdf.save(filename); // automatically downloads PDF
+    },
+    x: 20,
+    y: 20,
+    html2canvas: { scale: 0.5 } // optional: adjust rendering scale
+  });
 }
 async function sendBackupByEmailAndFormspree() {
   if (!hasAnyRecord()) {
@@ -1447,7 +1453,7 @@ function exportJSONBackup() {
   };
 
   const json = JSON.stringify(backup, null, 2);
-  downloadFile(json, "jasa_ventures_app_data_backup.json", "application/json");
+  downloadFile(json, `jasa_ventures_app_data_backup_${formatDateForFile()}.json`, "application/json");
 }
 
 function openPDFDownloadWindow(reportHTML) {
@@ -1533,6 +1539,31 @@ function mergeRecords(existingRecords, importedRecords) {
 /* =========================
    STYLED REPORT BUILDER
 ========================= */
+
+async function exportThenClearData() {
+  if (!hasAnyRecord()) {
+    alert("No records to clear.");
+    return;
+  }
+
+  // 1️⃣ Export CSV and Excel
+  await downloadAllCSV();           // downloads CSV
+  await downloadStyledExcelBackup(); // downloads XLSX
+
+  // Optional: you can also generate PDF if needed
+  // await printStyledPDF();
+
+  // 2️⃣ Clear all records
+  salesRecords = [];
+  purchaseRecords = [];
+  costSalesRecords = [];
+  advanceRecords = [];
+  ledgerRecords = [];
+
+  saveAll();       // Save cleared state to localStorage
+  renderAll();     // Refresh all tables
+  alert("All records cleared after export!");
+}
 
 function buildStyledBackupHTML(staffName) {
   const totals = getTotals();
@@ -2108,12 +2139,14 @@ function formatDate(dateString) {
   return `${day}/${month}/${year}`;
 }
 
-function formatDateForFile(dateObject) {
-  const day = String(dateObject.getDate()).padStart(2, "0");
-  const month = String(dateObject.getMonth() + 1).padStart(2, "0");
-  const year = dateObject.getFullYear();
-
-  return `${day}-${month}-${year}`;
+function formatDateForFile(date = new Date()) {
+  const dd = String(date.getDate()).padStart(2, "0");
+  const mm = String(date.getMonth() + 1).padStart(2, "0");
+  const yyyy = date.getFullYear();
+  const hh = String(date.getHours()).padStart(2, "0");
+  const min = String(date.getMinutes()).padStart(2, "0");
+  const ss = String(date.getSeconds()).padStart(2, "0");
+  return `${dd}${mm}${yyyy}_${hh}${min}${ss}`;
 }
 
 function getMonthKey(dateString) {
