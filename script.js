@@ -609,7 +609,7 @@ document.getElementById("advanceForm").addEventListener("submit", function (even
   }
 
   saveAll();
-  renderAdvance();
+  renderAll();
 
   this.reset();
   document.getElementById("advanceDate").valueAsDate = new Date();
@@ -735,25 +735,38 @@ function editCostSale(id) {
   editingRecord.costSales = record.id;
   document.getElementById("costSalesSubmitBtn").textContent = "Update Cost";
 }
-
 function editAdvance(id) {
   const record = advanceRecords.find((item) => String(item.id) === String(id));
   if (!record) return;
 
   openPage("advance", document.querySelector("button[onclick*='advance']"));
 
-  document.getElementById("advanceDate").value = record.advanceDate;
-  document.getElementById("advancePerson").value = record.person;
-  document.getElementById("advancePaymentMode").value = record.paymentMode;
-  document.getElementById("advanceEstimatedPrice").value = record.estimatedPrice;
-  document.getElementById("advanceEstimatedKg").value = record.estimatedKg;
-  document.getElementById("advanceRecoveryDate").value = record.recoveryDate;
-  document.getElementById("advanceRecoveryType").value = record.recoveryType;
-  document.getElementById("advanceGrossWeight").value = record.grossWeight;
-  document.getElementById("advanceNetWeight").value = record.netWeight;
-  document.getElementById("advancePrice").value = record.price;
-  document.getElementById("advanceAmount").value = record.amount;
-  document.getElementById("advanceExcessDelivery").value = record.excessDelivery;
+  const amountReceived =
+    Number(record.amountReceived || 0) ||
+    Number(record.estimatedPrice || 0) * Number(record.estimatedKg || 0);
+
+  const amountRecovered =
+    Number(record.amountRecovered || 0) ||
+    Number(record.netWeight || 0) * Number(record.price || 0);
+
+  const excessDelivery =
+    Number(record.excessDelivery || 0) ||
+    amountReceived - amountRecovered;
+
+  document.getElementById("advanceDate").value = record.advanceDate || "";
+  document.getElementById("advancePerson").value = record.person || "";
+  document.getElementById("advancePaymentMode").value = record.paymentMode || "";
+  document.getElementById("advanceEstimatedPrice").value = record.estimatedPrice || "";
+  document.getElementById("advanceEstimatedKg").value = record.estimatedKg || "";
+  document.getElementById("advanceAmountReceived").value = amountReceived.toFixed(2);
+
+  document.getElementById("advanceRecoveryDate").value = record.recoveryDate || "";
+  document.getElementById("advanceRecoveryType").value = record.recoveryType || "";
+  document.getElementById("advanceGrossWeight").value = record.grossWeight || "";
+  document.getElementById("advanceNetWeight").value = record.netWeight || "";
+  document.getElementById("advancePrice").value = record.price || "";
+  document.getElementById("advanceAmountRecovered").value = amountRecovered.toFixed(2);
+  document.getElementById("advanceExcessDelivery").value = excessDelivery.toFixed(2);
 
   editingRecord.advance = record.id;
   document.getElementById("advanceSubmitBtn").textContent = "Update Advance";
