@@ -1354,24 +1354,18 @@ function printStyledPDF() {
     return;
   }
 
-  const staffName = prompt("Enter staff name for the PDF report:", "Not Provided");
+  const staffName = prompt("Enter staff name for the PDF report:", "");
   const reportHTML = buildStyledBackupHTML(staffName || "Not Provided");
 
-  // Generate filename with date & time
-  const filename = `jasa_ventures_backup_${formatDateForFile()}.pdf`;
+  const printWindow = window.open("", "_blank");
+  printWindow.document.open();
+  printWindow.document.write(reportHTML);
+  printWindow.document.close();
 
-  // Create a jsPDF instance
-  const doc = new jsPDF('p', 'pt', 'a4');
-
-  // Convert HTML to PDF using fromHTML or html() method
-  doc.html(reportHTML, {
-    callback: function (pdf) {
-      pdf.save(filename); // automatically downloads PDF
-    },
-    x: 20,
-    y: 20,
-    html2canvas: { scale: 0.5 } // optional: adjust rendering scale
-  });
+  printWindow.onload = function () {
+    printWindow.focus();
+    printWindow.print();
+  };
 }
 async function sendBackupByEmailAndFormspree() {
   if (!hasAnyRecord()) {
@@ -1576,16 +1570,17 @@ function buildStyledBackupHTML(staffName) {
 <style>
   body {
     font-family: Arial, Helvetica, sans-serif;
-    color: #1f2937;
+    color: #0c3063;
     margin: 24px;
-    background: #ffffff;
+    background: #d5ecc9;
   }
 
   .report-header {
-    background: linear-gradient(135deg, #243865, #16223d);
-    color: #ffffff;
+    background: linear-gradient(90deg, #ffffff, #dbdbc6);
+    color: #0b0c49;
     padding: 24px;
-    border-radius: 14px;
+    border: 2px solid #053492;
+    border-radius: 17px;
     margin-bottom: 20px;
     border-bottom: 6px solid #e7ad4a;
   }
@@ -1609,16 +1604,16 @@ function buildStyledBackupHTML(staffName) {
   }
 
   .summary-box {
-    border: 1px solid #d9dee8;
-    background: #edf5ff;
+    border: 2px solid #04163b;
+    background: #98bae4;
     padding: 14px;
-    border-radius: 12px;
+    border-radius: 17px;
     border-left: 5px solid #e7ad4a;
   }
 
   .summary-box strong {
     display: block;
-    color: #243865;
+    color: #031133;
     font-size: 13px;
     text-transform: uppercase;
   }
@@ -1641,13 +1636,13 @@ function buildStyledBackupHTML(staffName) {
     width: 100%;
     border-collapse: collapse;
     margin-bottom: 22px;
-    font-size: 12px;
-    border: 1px solid #d9dee8;
+    font-size: 15px;
+    border: 1px solid #0e1116;
   }
 
   th {
-    background: #243865;
-    color: #ffffff;
+    background: #8da0ce;
+    color: #071272;
     padding: 10px;
     border: 1px solid #16223d;
     text-align: center;
@@ -1656,23 +1651,23 @@ function buildStyledBackupHTML(staffName) {
 
   td {
     padding: 9px;
-    border: 1px solid #d9dee8;
+    border: 1px solid #080c14;
     text-align: center;
   }
 
   tr:nth-child(even) td {
-    background: #f8fbff;
+    background: #c5bdac;
   }
 
   tr:nth-child(odd) td {
-    background: #ffffff;
+    background: #f1ecda;
   }
 
   .credit,
   .positive {
     color: #0f8a3a;
     font-weight: bold;
-  }
+  } 
 
   .debit,
   .negative {
