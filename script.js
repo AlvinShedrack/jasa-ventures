@@ -1546,9 +1546,9 @@ async function exportThenClearData() {
     return;
   }
 
-  // 1️⃣ Export CSV and Excel
-  await downloadAllCSV();           // downloads CSV
-  await downloadStyledExcelBackup(); // downloads XLSX
+  // 1️⃣ Export 
+  await  exportJSONBackup();           // download
+
 
   // Optional: you can also generate PDF if needed
   // await printStyledPDF();
@@ -1562,7 +1562,7 @@ async function exportThenClearData() {
 
   saveAll();       // Save cleared state to localStorage
   renderAll();     // Refresh all tables
-  alert("All records cleared after export!");
+  alert("All records shall be cleared after this backup!");
 }
 
 function buildStyledBackupHTML(staffName) {
