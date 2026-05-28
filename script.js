@@ -308,7 +308,7 @@ document.getElementById("salesForm").addEventListener("submit", function (event)
   }
 
   saveAll();
-  renderSales();
+  renderAll();
   this.reset();
   document.getElementById("salesDate").valueAsDate = new Date();
 });
