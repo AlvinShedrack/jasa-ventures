@@ -571,6 +571,7 @@ function renderPurchases() {
         <td>
           <div class="action-buttons">
             <button class="edit-btn" onclick="editPurchase('${record.id}')">Edit</button>
+            <button class="receipt-btn" onclick="generatePurchaseReceipt('${record.id}')">Receipt</button>
             <button class="delete-btn" onclick="deletePurchase('${record.id}')">Delete</button>
           </div>
         </td>
@@ -585,6 +586,180 @@ function deletePurchase(id) {
   purchaseRecords = purchaseRecords.filter((record) => String(record.id) !== String(id));
   saveAll();
   renderAll();
+}
+
+function generatePurchaseReceipt(id) {
+  const record = purchaseRecords.find((r) => String(r.id) === String(id));
+  if (!record) {
+    alert("Purchase record not found.");
+    return;
+  }
+
+  const receiptHTML = `
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>Purchase Receipt - ${escapeHTML(record.receipt || "No Receipt")}</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      color: #222;
+      margin: 20px;
+      background: white;
+    }
+    .receipt-container {
+      width: 100%;
+      max-width: 600px;
+      margin: 0 auto;
+      border: 2px solid #243865;
+      border-radius: 10px;
+      padding: 20px;
+      background: white;
+    }
+    .receipt-header {
+      text-align: center;
+      border-bottom: 2px solid #243865;
+      padding-bottom: 15px;
+      margin-bottom: 20px;
+    }
+    .receipt-header h1 {
+      color: #243865;
+      margin: 0 0 5px;
+      font-size: 24px;
+    }
+    .receipt-header p {
+      margin: 3px 0;
+      color: #666;
+      font-size: 12px;
+    }
+    .receipt-content {
+      margin: 20px 0;
+    }
+    .receipt-section {
+      margin-bottom: 20px;
+    }
+    .receipt-section h3 {
+      color: #243865;
+      margin: 10px 0 8px;
+      font-size: 14px;
+      text-transform: uppercase;
+      border-bottom: 1px solid #e7ad4a;
+      padding-bottom: 5px;
+    }
+    .receipt-row {
+      display: flex;
+      justify-content: space-between;
+      margin-bottom: 8px;
+      font-size: 13px;
+    }
+    .receipt-row label {
+      font-weight: bold;
+      color: #243865;
+      min-width: 120px;
+    }
+    .receipt-row value {
+      text-align: right;
+      color: #333;
+    }
+    .receipt-total {
+      display: flex;
+      justify-content: space-between;
+      margin-top: 15px;
+      padding-top: 15px;
+      border-top: 2px solid #243865;
+      font-weight: bold;
+      font-size: 16px;
+      color: #243865;
+    }
+    .receipt-footer {
+      text-align: center;
+      margin-top: 20px;
+      padding-top: 15px;
+      border-top: 1px solid #ddd;
+      font-size: 11px;
+      color: #666;
+    }
+    @media print {
+      body { margin: 0; padding: 0; }
+      .receipt-container { border: none; box-shadow: none; }
+    }
+  </style>
+</head>
+<body>
+  <div class="receipt-container">
+    <div class="receipt-header">
+      <h1>PURCHASE RECEIPT</h1>
+      <p>Jasa Ventures</p>
+      <p>Generated: ${formatDateTimeForReport(new Date())}</p>
+    </div>
+    
+    <div class="receipt-content">
+      <div class="receipt-section">
+        <h3>Receipt Details</h3>
+        <div class="receipt-row">
+          <label>Receipt No:</label>
+          <value>${escapeHTML(record.receipt || "N/A")}</value>
+        </div>
+        <div class="receipt-row">
+          <label>Date:</label>
+          <value>${formatDate(record.date)}</value>
+        </div>
+      </div>
+
+      <div class="receipt-section">
+        <h3>Supplier / Item Details</h3>
+        <div class="receipt-row">
+          <label>Supplier:</label>
+          <value>${escapeHTML(record.description)}</value>
+        </div>
+        <div class="receipt-row">
+          <label>Type:</label>
+          <value>${escapeHTML(record.type || "Other")}</value>
+        </div>
+        <div class="receipt-row">
+          <label>Quantity:</label>
+          <value>${formatNumber(record.quantity)}</value>
+        </div>
+        <div class="receipt-row">
+          <label>Unit Price:</label>
+          <value>${formatMoney(record.price)}</value>
+        </div>
+      </div>
+
+      <div class="receipt-section">
+        <div class="receipt-total">
+          <span>Total Amount:</span>
+          <span>${formatMoney(record.amount)}</span>
+        </div>
+      </div>
+
+      <div class="receipt-section">
+        <h3>Additional Info</h3>
+        <div class="receipt-row">
+          <label>Month:</label>
+          <value>${getMonthName(record.date)}</value>
+        </div>
+      </div>
+    </div>
+
+    <div class="receipt-footer">
+      <p>This is a system-generated receipt. Retain for your records.</p>
+      <p>&copy; 2026 Jasa Ventures. All rights reserved.</p>
+    </div>
+  </div>
+</body>
+</html>`;
+
+  const printWindow = window.open("", "_blank");
+  printWindow.document.open();
+  printWindow.document.write(receiptHTML);
+  printWindow.document.close();
+  
+  printWindow.onload = function () {
+    printWindow.focus();
+    printWindow.print();
+  };
 }
 
 /* =========================

@@ -23,12 +23,14 @@ body {
   background: linear-gradient(135deg, var(--bg), #b9d8ff);
   color: var(--text);
 }
-    footer {
-      text-align: center;
-      margin: 12px 0 0;
-      font-size: 1.0rem;
-      color: #ff0000;
-    }
+
+footer {
+  text-align: center;
+  margin: 12px 0 0;
+  font-size: 1.0rem;
+  color: #ff0000;
+}
+
 .app-shell {
   width: min(1280px, 100%);
   margin: 0 auto;
@@ -256,11 +258,11 @@ button {
 }
 
 .import-btn {
-  background: var(--accent)
+  background: var(--accent);
 }
 
 .backup-btn {
-  background: var(--bg)
+  background: var(--bg);
 }
 
 .danger-btn {
@@ -328,6 +330,14 @@ tbody tr:nth-child(even) {
   padding: 8px 10px;
 }
 
+.receipt-btn {
+  background: #0066cc;
+  color: white;
+  min-height: 36px;
+  padding: 8px 10px;
+  margin-bottom: 5px;
+}
+
 .empty-row {
   color: var(--muted);
   font-style: italic;
@@ -363,6 +373,30 @@ tbody tr:nth-child(even) {
 
 .muted {
   color: var(--muted);
+}
+
+/* Mobile-friendly search filters */
+@media (max-width: 768px) {
+  .table-actions.compact-search {
+    justify-content: stretch;
+    gap: 8px;
+  }
+
+  .table-actions.compact-search input[type="search"] {
+    flex: 1 1 100%;
+    max-width: 100%;
+    min-height: 44px;
+    padding: 10px 12px;
+    font-size: 16px;
+  }
+
+  .table-actions.compact-search .small-btn,
+  .small-btn {
+    flex: 1 1 auto;
+    min-height: 40px;
+    padding: 9px 12px;
+    font-size: 13px;
+  }
 }
 
 @media (max-width: 850px) {
@@ -497,26 +531,64 @@ tbody tr:nth-child(even) {
 
 /* Compact search / small buttons for table filters */
 .table-actions.compact-search {
-  margin-top: 8px;
+  margin-top: 12px;
   display: flex;
-  gap: 8px;
+  gap: 10px;
   align-items: center;
+  justify-content: center;
+  flex-wrap: wrap;
+  width: 100%;
 }
 
 .table-actions.compact-search input[type="search"] {
-  min-height: 32px;
-  padding: 6px 10px;
-  font-size: 14px;
-  border-radius: 8px;
+  min-height: 42px;
+  padding: 10px 14px;
+  font-size: 15px;
+  color: var(--text);
+  background: white;
+  border-radius: 10px;
   border: 1px solid var(--border);
-  flex: 1;
-  max-width: 900px;
+  flex: 1 1 260px;
+  max-width: 420px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+}
+
+.table-actions.compact-search input[type="search"]::placeholder {
+  color: var(--muted);
+}
+
+.table-actions.compact-search input[type="search"]:focus {
+  outline: 3px solid rgba(231, 173, 74, 0.35);
+  border-color: var(--accent);
 }
 
 .table-actions.compact-search .small-btn,
 .small-btn {
-  min-height: 32px;
-  padding: 6px 10px;
+  width: auto;
+  min-height: 42px;
+  padding: 10px 16px;
   font-size: 13px;
-  border-radius: 8px;
+  border-radius: 10px;
+  white-space: nowrap;
+  background: var(--primary);
+  color: white;
+  border: none;
+  font-weight: bold;
+  cursor: pointer;
+  transition: 0.2s ease;
+}
+
+.table-actions.compact-search .small-btn:hover,
+.small-btn:hover {
+  background: var(--primary-dark);
+  transform: translateY(-1px);
+}
+
+.table-actions.compact-search .clear-btn {
+  background: var(--danger);
+  color: white;
+}
+
+.table-actions.compact-search .clear-btn:hover {
+  background: #9f1f1f;
 }

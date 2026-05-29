@@ -147,7 +147,7 @@
 
           <div class="table-actions compact-search">
             <input type="search" id="ledgerSearch" placeholder="Search ledger by description" />
-            <button onclick="clearLedgerSearch()" class="secondary-btn small-btn">Clear</button>
+            <!-- <button onclick="clearLedgerSearch()" class="secondary-btn small-btn">Clear</button> -->
           </div>
 
           <div class="table-wrapper">
@@ -217,7 +217,7 @@
 
         <div class="table-actions compact-search">
           <input type="search" id="salesSearch" placeholder="Search by description or invoice" />
-          <button onclick="clearSalesSearch()" class="secondary-btn small-btn">Clear</button>
+          <!-- <button onclick="clearSalesSearch()" class="secondary-btn small-btn">Clear</button> -->
         </div>
 
         <div class="table-wrapper">
@@ -301,7 +301,7 @@
 
           <div class="table-actions compact-search">
             <input type="search" id="purchaseSearch" placeholder="Search purchases by description or receipt" />
-            <button onclick="clearPurchaseSearch()" class="secondary-btn small-btn">Clear</button>
+            <!-- <button onclick="clearPurchaseSearch()" class="secondary-btn small-btn">Clear</button> -->
           </div>
 
           <div class="table-wrapper">
@@ -374,7 +374,7 @@
 
           <div class="table-actions compact-search">
             <input type="search" id="costSalesSearch" placeholder="Search cost of sales by description or reference" />
-            <button onclick="clearCostSalesSearch()" class="secondary-btn small-btn">Clear</button>
+            <!-- <button onclick="clearCostSalesSearch()" class="secondary-btn small-btn">Clear</button> -->
           </div>
 
           <div class="table-wrapper">
@@ -494,7 +494,7 @@
     </div>
     <div class="table-actions compact-search">
       <input type="search" id="advanceSearch" placeholder="Search advances by person or payment mode" />
-      <button onclick="clearAdvanceSearch()" class="secondary-btn small-btn">Clear</button>
+      <!-- <button onclick="clearAdvanceSearch()" class="secondary-btn small-btn">Clear</button> -->
     </div>
 
     <div class="table-wrapper">
@@ -522,7 +522,11 @@
       </table>
     </div>
   </section>
-    </section>
+      <div class="table-actions" style="margin-top:12px; display:flex; gap:8px; align-items:center;">
+        <input type="search" id="advanceSearch" placeholder="Search advances by person or payment mode" style="flex:1; padding:8px;" />
+        <!-- <button onclick="clearAdvanceSearch()" class="secondary-btn">Clear</button> -->
+      </div>
+</section>
 
       <!-- MONTHLY SUMMARY -->
       <section id="monthly" class="page">
