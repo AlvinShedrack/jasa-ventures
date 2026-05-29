@@ -162,6 +162,10 @@
             </table>
           </div>
         </section>
+        <div class="table-actions" style="margin-top:12px; display:flex; gap:8px; align-items:center;">
+          <input type="search" id="ledgerSearch" placeholder="Search ledger by description" style="flex:1; padding:8px;" />
+          <button onclick="clearLedgerSearch()" class="secondary-btn">Clear</button>
+        </div>
       </section>
 
       <!-- SALES -->
@@ -210,25 +214,35 @@
           <span id="salesCount">0 records</span>
         </div>
 
-        <div class="table-wrapper">
-          <table>
-            <thead>
-              <tr>
-                <th>#</th>
-                <th>Date</th>
-                <th>Description</th>
-                <th>Invoice No.</th>
-                <th>Quantity</th>
-                <th>Price</th>
-                <th>Amount</th>
-                <th>Month</th>
-                <th>Action</th>
-              </tr>
-            </thead>
-            <tbody id="salesTable"></tbody>
-          </table>
+          <div class="table-wrapper">
+            <table>
+              <thead>
+                <tr>
+                  <th>#</th>
+                  <th>Date</th>
+                  <th>Description</th>
+                  <th>Invoice No.</th>
+                  <th>Quantity</th>
+                  <th>Price</th>
+                  <th>Amount</th>
+                  <th>Month</th>
+                  <th>Action</th>
+                </tr>
+              </thead>
+            </table>
+          </div>
+        </section>
+        <div class="table-actions" style="margin-top:12px; display:flex; gap:8px; align-items:center;">
+          <input type="search" id="salesSearch" placeholder="Search by description or invoice" style="flex:1; padding:8px;" />
+          <button onclick="clearSalesSearch()" class="secondary-btn">Clear</button>
         </div>
-      </section>
+        <div style="margin-top:8px;">
+          <div class="table-wrapper">
+            <table>
+              <tbody id="salesTable"></tbody>
+            </table>
+          </div>
+        </div>
     </section>
 
       <!-- PURCHASES -->
@@ -309,6 +323,10 @@
             </table>
           </div>
         </section>
+        <div class="table-actions" style="margin-top:12px; display:flex; gap:8px; align-items:center;">
+          <input type="search" id="purchaseSearch" placeholder="Search purchases by description or receipt" style="flex:1; padding:8px;" />
+          <button onclick="clearPurchaseSearch()" class="secondary-btn">Clear</button>
+        </div>
       </section>
 
       <!-- COST OF SALES -->
@@ -376,6 +394,10 @@
             </table>
           </div>
         </section>
+        <div class="table-actions" style="margin-top:12px; display:flex; gap:8px; align-items:center;">
+          <input type="search" id="costSalesSearch" placeholder="Search cost of sales by description or reference" style="flex:1; padding:8px;" />
+          <button onclick="clearCostSalesSearch()" class="secondary-btn">Clear</button>
+        </div>
       </section>
 
       <!-- ADVANCE -->
@@ -498,6 +520,10 @@
       </table>
     </div>
   </section>
+      <div class="table-actions" style="margin-top:12px; display:flex; gap:8px; align-items:center;">
+        <input type="search" id="advanceSearch" placeholder="Search advances by person or payment mode" style="flex:1; padding:8px;" />
+        <button onclick="clearAdvanceSearch()" class="secondary-btn">Clear</button>
+      </div>
 </section>
 
       <!-- MONTHLY SUMMARY -->
@@ -508,6 +534,7 @@
           <button onclick="sendBackupByEmailAndFormspree()"id="backupBtn" class="backup-btn">Send Backup</button>
           <button onclick="exportJSONBackup()"id="importBtn" class="import-btn">Export App Data</button>
           <button onclick="triggerImport()"id="importBtn" class="import-btn">Import and Merge Data</button>
+          <button onclick="triggerImportReplace()" class="import-btn">Import and Replace Data</button>
           <button onclick="exportThenClearData()" class="danger-btn">Clear All Records</button>
 
           <input
@@ -516,6 +543,13 @@
             accept=".json"
             style="display:none"
             onchange="importAndMergeData(event)"
+          />
+          <input
+            type="file"
+            id="importReplaceFile"
+            accept=".json"
+            style="display:none"
+            onchange="importAndReplaceData(event)"
           />
         </section>
 

@@ -227,24 +227,28 @@ document.getElementById("ledgerForm").addEventListener("submit", function (event
 function renderLedger() {
   const table = document.getElementById("ledgerTable");
   const count = document.getElementById("ledgerCount");
+  const query = (document.getElementById("ledgerSearch")?.value || "").trim().toLowerCase();
+
+  const filtered = query
+    ? ledgerRecords.filter((r) => (r.description || "").toLowerCase().includes(query))
+    : ledgerRecords;
 
   table.innerHTML = "";
-  count.textContent = `${ledgerRecords.length} record${ledgerRecords.length === 1 ? "" : "s"}`;
+  count.textContent = `${filtered.length} record${filtered.length === 1 ? "" : "s"}`;
 
-  if (ledgerRecords.length === 0) {
-    table.innerHTML = `<tr><td colspan="7" class="empty-row">No ledger records yet.</td></tr>`;
+  if (filtered.length === 0) {
+    table.innerHTML = `<tr><td colspan="7" class="empty-row">No ledger records found.</td></tr>`;
     return;
   }
 
   let balance = 0;
 
-  ledgerRecords.forEach((record, index) => {
+  filtered.forEach((record, index) => {
     if (record.type === "credit") {
       balance += Number(record.amount);
     } else {
       balance -= Number(record.amount);
     }
-
     table.innerHTML += `
       <tr>
         <td>${index + 1}</td>
@@ -278,7 +282,6 @@ function deleteLedger(id) {
 
 document.getElementById("salesForm").addEventListener("submit", function (event) {
   event.preventDefault();
-
   const date = document.getElementById("salesDate").value;
   const description = document.getElementById("salesDescription").value.trim();
   const invoice = document.getElementById("salesInvoice").value.trim();
@@ -286,8 +289,15 @@ document.getElementById("salesForm").addEventListener("submit", function (event)
   const price = Number(document.getElementById("salesPrice").value) || 0;
   const amount = Number(document.getElementById("salesAmount").value) || quantity * price;
 
-  if (!date || !description || quantity <= 0 || price <= 0) {
-    alert("Please enter valid sales details.");
+  // Detailed validation with field-specific messages
+  const errors = [];
+  if (!date) errors.push("Date is required.");
+  if (!description) errors.push("Description / Customer is required.");
+  if (quantity <= 0) errors.push("Quantity must be greater than zero.");
+  if (price <= 0) errors.push("Price must be greater than zero.");
+
+  if (errors.length) {
+    alert("Please fix the following:\n- " + errors.join("\n- "));
     return;
   }
 
@@ -305,6 +315,9 @@ document.getElementById("salesForm").addEventListener("submit", function (event)
     salesRecords = salesRecords.map(r => r.id === editingRecord.sales ? newRecord : r);
     editingRecord.sales = null;
     document.getElementById("salesSubmitBtn").textContent = "Add Sale";
+    // hide cancel button when edit completes
+    const cancelBtn = document.getElementById("salesCancelBtn");
+    if (cancelBtn) cancelBtn.style.display = 'none';
   } else {
     salesRecords.push(newRecord);
   }
@@ -315,22 +328,134 @@ document.getElementById("salesForm").addEventListener("submit", function (event)
   document.getElementById("salesDate").valueAsDate = new Date();
 });
 
+// Search/filter support for sales
+function clearSalesSearch() {
+  const el = document.getElementById("salesSearch");
+  if (el) {
+    el.value = "";
+    renderSales();
+  }
+}
+
+function clearLedgerSearch() {
+  const el = document.getElementById("ledgerSearch");
+  if (el) {
+    el.value = "";
+    renderLedger();
+  }
+}
+
+function clearPurchaseSearch() {
+  const el = document.getElementById("purchaseSearch");
+  if (el) {
+    el.value = "";
+    renderPurchases();
+  }
+}
+
+function clearCostSalesSearch() {
+  const el = document.getElementById("costSalesSearch");
+  if (el) {
+    el.value = "";
+    renderCostSales();
+  }
+}
+
+function clearAdvanceSearch() {
+  const el = document.getElementById("advanceSearch");
+  if (el) {
+    el.value = "";
+    renderAdvance();
+  }
+}
+
+// If the search input is already present, attach listener immediately (script loaded at end of body).
+const _salesSearchEl = document.getElementById("salesSearch");
+if (_salesSearchEl) {
+  _salesSearchEl.addEventListener("input", () => renderSales());
+} else {
+  document.addEventListener("DOMContentLoaded", () => {
+    const search = document.getElementById("salesSearch");
+    if (search) search.addEventListener("input", () => renderSales());
+  });
+}
+
+// ledger search
+const _ledgerSearchEl = document.getElementById("ledgerSearch");
+if (_ledgerSearchEl) {
+  _ledgerSearchEl.addEventListener("input", () => renderLedger());
+} else {
+  document.addEventListener("DOMContentLoaded", () => {
+    const s = document.getElementById("ledgerSearch");
+    if (s) s.addEventListener("input", () => renderLedger());
+  });
+}
+
+// purchase search
+const _purchaseSearchEl = document.getElementById("purchaseSearch");
+if (_purchaseSearchEl) {
+  _purchaseSearchEl.addEventListener("input", () => renderPurchases());
+} else {
+  document.addEventListener("DOMContentLoaded", () => {
+    const s = document.getElementById("purchaseSearch");
+    if (s) s.addEventListener("input", () => renderPurchases());
+  });
+}
+
+// costSales search
+const _costSalesSearchEl = document.getElementById("costSalesSearch");
+if (_costSalesSearchEl) {
+  _costSalesSearchEl.addEventListener("input", () => renderCostSales());
+} else {
+  document.addEventListener("DOMContentLoaded", () => {
+    const s = document.getElementById("costSalesSearch");
+    if (s) s.addEventListener("input", () => renderCostSales());
+  });
+}
+
+// advance search
+const _advanceSearchEl = document.getElementById("advanceSearch");
+if (_advanceSearchEl) {
+  _advanceSearchEl.addEventListener("input", () => renderAdvance());
+} else {
+  document.addEventListener("DOMContentLoaded", () => {
+    const s = document.getElementById("advanceSearch");
+    if (s) s.addEventListener("input", () => renderAdvance());
+  });
+}
+
+function cancelEditSale() {
+  // Clear edit state and reset form
+  editingRecord.sales = null;
+  const form = document.getElementById("salesForm");
+  if (form) form.reset();
+  document.getElementById("salesDate").valueAsDate = new Date();
+  document.getElementById("salesSubmitBtn").textContent = "Add Sale";
+  const cancelBtn = document.getElementById("salesCancelBtn");
+  if (cancelBtn) cancelBtn.style.display = 'none';
+}
+
 function renderSales() {
   const tableBody = document.getElementById("salesTable");
   if (!tableBody) return;
-
   tableBody.innerHTML = ""; // Clear previous rows
 
-  salesRecords.forEach((record, index) => {
+  const query = (document.getElementById("salesSearch")?.value || "").trim().toLowerCase();
+
+  const filtered = query
+    ? salesRecords.filter((r) => (r.description || "").toLowerCase().includes(query) || (r.invoice || "").toLowerCase().includes(query))
+    : salesRecords;
+
+  filtered.forEach((record, idx) => {
     const amount = Number(record.amount || (record.quantity * record.price)) || 0;
     const month = getMonthName(record.date);
 
     const tr = document.createElement("tr");
     tr.innerHTML = `
-      <td>${index + 1}</td>
+      <td>${idx + 1}</td>
       <td>${formatDate(record.date)}</td>
-      <td>${record.description}</td>
-      <td>${record.invoice || "-"}</td>
+      <td>${escapeHTML(record.description)}</td>
+      <td>${escapeHTML(record.invoice || "-")}</td>
       <td>${Number(record.quantity || 0).toFixed(2)}</td>
       <td>${Number(record.price || 0).toFixed(2)}</td>
       <td>${amount.toFixed(2)}</td>
@@ -351,7 +476,7 @@ function renderSales() {
 
   // Update sales count display
   const salesCount = document.getElementById("salesCount");
-  if (salesCount) salesCount.textContent = `${salesRecords.length} record(s)`;
+  if (salesCount) salesCount.textContent = `${filtered.length} record(s)`;
 }
 
 
@@ -417,16 +542,21 @@ document.getElementById("purchaseForm").addEventListener("submit", function (eve
 function renderPurchases() {
   const table = document.getElementById("purchaseTable");
   const count = document.getElementById("purchaseCount");
+  const query = (document.getElementById("purchaseSearch")?.value || "").trim().toLowerCase();
+
+  const filtered = query
+    ? purchaseRecords.filter((r) => (r.description || "").toLowerCase().includes(query) || (r.receipt || "").toLowerCase().includes(query) || (r.type || "").toLowerCase().includes(query))
+    : purchaseRecords;
 
   table.innerHTML = "";
-  count.textContent = `${purchaseRecords.length} record${purchaseRecords.length === 1 ? "" : "s"}`;
+  count.textContent = `${filtered.length} record${filtered.length === 1 ? "" : "s"}`;
 
-  if (purchaseRecords.length === 0) {
-    table.innerHTML = `<tr><td colspan="10" class="empty-row">No purchase records yet.</td></tr>`;
+  if (filtered.length === 0) {
+    table.innerHTML = `<tr><td colspan="10" class="empty-row">No purchase records found.</td></tr>`;
     return;
   }
 
-  purchaseRecords.forEach((record, index) => {
+  filtered.forEach((record, index) => {
     table.innerHTML += `
       <tr>
         <td>${index + 1}</td>
@@ -443,7 +573,7 @@ function renderPurchases() {
             <button class="edit-btn" onclick="editPurchase('${record.id}')">Edit</button>
             <button class="delete-btn" onclick="deletePurchase('${record.id}')">Delete</button>
           </div>
-        </td>>
+        </td>
       </tr>
     `;
   });
@@ -509,16 +639,21 @@ document.getElementById("costSalesForm").addEventListener("submit", function (ev
 function renderCostSales() {
   const table = document.getElementById("costSalesTable");
   const count = document.getElementById("costSalesCount");
+  const query = (document.getElementById("costSalesSearch")?.value || "").trim().toLowerCase();
+
+  const filtered = query
+    ? costSalesRecords.filter((r) => (r.description || "").toLowerCase().includes(query) || (r.reference || "").toLowerCase().includes(query))
+    : costSalesRecords;
 
   table.innerHTML = "";
-  count.textContent = `${costSalesRecords.length} record${costSalesRecords.length === 1 ? "" : "s"}`;
+  count.textContent = `${filtered.length} record${filtered.length === 1 ? "" : "s"}`;
 
-  if (costSalesRecords.length === 0) {
-    table.innerHTML = `<tr><td colspan="9" class="empty-row">No cost of sales records yet.</td></tr>`;
+  if (filtered.length === 0) {
+    table.innerHTML = `<tr><td colspan="9" class="empty-row">No cost of sales records found.</td></tr>`;
     return;
   }
 
-  costSalesRecords.forEach((record, index) => {
+  filtered.forEach((record, index) => {
     table.innerHTML += `
       <tr>
         <td>${index + 1}</td>
@@ -625,10 +760,15 @@ document.getElementById("advanceForm").addEventListener("submit", function (even
 function renderAdvance() {
   const tableBody = document.getElementById("advanceTable");
   if (!tableBody) return;
+  const query = (document.getElementById("advanceSearch")?.value || "").trim().toLowerCase();
+
+  const filtered = query
+    ? advanceRecords.filter((r) => (r.person || "").toLowerCase().includes(query) || (r.paymentMode || "").toLowerCase().includes(query))
+    : advanceRecords;
 
   tableBody.innerHTML = "";
 
-  advanceRecords.forEach((record, index) => {
+  filtered.forEach((record, index) => {
     const amountReceived = Number(record.estimatedPrice || 0) * Number(record.estimatedKg || 0);
     const amountRecovered = Number(record.netWeight || 0) * Number(record.price || 0);
     const excessDelivery = amountReceived - amountRecovered;
@@ -663,6 +803,8 @@ function renderAdvance() {
     record.amountRecovered = amountRecovered;
     record.excessDelivery = excessDelivery;
   });
+  const advanceCount = document.getElementById("advanceCount");
+  if (advanceCount) advanceCount.textContent = `${filtered.length} record(s)`;
 }
 
 function deleteAdvance(id) {
@@ -703,6 +845,8 @@ function editSale(id) {
 
   editingRecord.sales = record.id;
   document.getElementById("salesSubmitBtn").textContent = "Update Sale";
+  const cancelBtn = document.getElementById("salesCancelBtn");
+  if (cancelBtn) cancelBtn.style.display = '';
 }
 
 function editPurchase(id) {
@@ -1523,6 +1667,44 @@ function importAndMergeData(event) {
     }
   };
 
+  reader.readAsText(file);
+}
+
+function triggerImportReplace() {
+  const input = document.getElementById("importReplaceFile");
+  if (!input) {
+    alert("Import input not found.");
+    return;
+  }
+  input.value = "";
+  input.click();
+}
+
+function importAndReplaceData(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+
+  const reader = new FileReader();
+  reader.onload = function (e) {
+    try {
+      const data = JSON.parse(e.target.result);
+
+      if (!confirm("This will replace ALL current app data with the backup file. Proceed?")) return;
+
+      ledgerRecords = Array.isArray(data.ledgerRecords) ? data.ledgerRecords : [];
+      salesRecords = Array.isArray(data.salesRecords) ? data.salesRecords : [];
+      purchaseRecords = Array.isArray(data.purchaseRecords) ? data.purchaseRecords : [];
+      costSalesRecords = Array.isArray(data.costSalesRecords) ? data.costSalesRecords : [];
+      advanceRecords = Array.isArray(data.advanceRecords) ? data.advanceRecords : [];
+
+      saveAll();
+      renderAll();
+      alert("Data imported and replaced successfully.");
+    } catch (err) {
+      alert("Invalid backup file. Please upload a valid Jasa Ventures JSON backup.");
+      console.error(err);
+    }
+  };
   reader.readAsText(file);
 }
 
