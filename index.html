@@ -145,6 +145,11 @@
             <span id="ledgerCount">0 records</span>
           </div>
 
+          <div class="table-actions compact-search">
+            <input type="search" id="ledgerSearch" placeholder="Search ledger by description" />
+            <button onclick="clearLedgerSearch()" class="secondary-btn small-btn">Clear</button>
+          </div>
+
           <div class="table-wrapper">
             <table>
               <thead>
@@ -162,10 +167,6 @@
             </table>
           </div>
         </section>
-        <div class="table-actions" style="margin-top:12px; display:flex; gap:8px; align-items:center;">
-          <input type="search" id="ledgerSearch" placeholder="Search ledger by description" style="flex:1; padding:8px;" />
-          <button onclick="clearLedgerSearch()" class="secondary-btn">Clear</button>
-        </div>
       </section>
 
       <!-- SALES -->
@@ -214,35 +215,30 @@
           <span id="salesCount">0 records</span>
         </div>
 
-          <div class="table-wrapper">
-            <table>
-              <thead>
-                <tr>
-                  <th>#</th>
-                  <th>Date</th>
-                  <th>Description</th>
-                  <th>Invoice No.</th>
-                  <th>Quantity</th>
-                  <th>Price</th>
-                  <th>Amount</th>
-                  <th>Month</th>
-                  <th>Action</th>
-                </tr>
-              </thead>
-            </table>
-          </div>
-        </section>
-        <div class="table-actions" style="margin-top:12px; display:flex; gap:8px; align-items:center;">
-          <input type="search" id="salesSearch" placeholder="Search by description or invoice" style="flex:1; padding:8px;" />
-          <button onclick="clearSalesSearch()" class="secondary-btn">Clear</button>
+        <div class="table-actions compact-search">
+          <input type="search" id="salesSearch" placeholder="Search by description or invoice" />
+          <button onclick="clearSalesSearch()" class="secondary-btn small-btn">Clear</button>
         </div>
-        <div style="margin-top:8px;">
-          <div class="table-wrapper">
-            <table>
-              <tbody id="salesTable"></tbody>
-            </table>
-          </div>
+
+        <div class="table-wrapper">
+          <table>
+            <thead>
+              <tr>
+                <th>#</th>
+                <th>Date</th>
+                <th>Description</th>
+                <th>Invoice No.</th>
+                <th>Quantity</th>
+                <th>Price</th>
+                <th>Amount</th>
+                <th>Month</th>
+                <th>Action</th>
+              </tr>
+            </thead>
+            <tbody id="salesTable"></tbody>
+          </table>
         </div>
+      </section>
     </section>
 
       <!-- PURCHASES -->
@@ -303,6 +299,11 @@
             <span id="purchaseCount">0 records</span>
           </div>
 
+          <div class="table-actions compact-search">
+            <input type="search" id="purchaseSearch" placeholder="Search purchases by description or receipt" />
+            <button onclick="clearPurchaseSearch()" class="secondary-btn small-btn">Clear</button>
+          </div>
+
           <div class="table-wrapper">
             <table>
               <thead>
@@ -323,10 +324,6 @@
             </table>
           </div>
         </section>
-        <div class="table-actions" style="margin-top:12px; display:flex; gap:8px; align-items:center;">
-          <input type="search" id="purchaseSearch" placeholder="Search purchases by description or receipt" style="flex:1; padding:8px;" />
-          <button onclick="clearPurchaseSearch()" class="secondary-btn">Clear</button>
-        </div>
       </section>
 
       <!-- COST OF SALES -->
@@ -375,6 +372,11 @@
             <span id="costSalesCount">0 records</span>
           </div>
 
+          <div class="table-actions compact-search">
+            <input type="search" id="costSalesSearch" placeholder="Search cost of sales by description or reference" />
+            <button onclick="clearCostSalesSearch()" class="secondary-btn small-btn">Clear</button>
+          </div>
+
           <div class="table-wrapper">
             <table>
               <thead>
@@ -394,10 +396,6 @@
             </table>
           </div>
         </section>
-        <div class="table-actions" style="margin-top:12px; display:flex; gap:8px; align-items:center;">
-          <input type="search" id="costSalesSearch" placeholder="Search cost of sales by description or reference" style="flex:1; padding:8px;" />
-          <button onclick="clearCostSalesSearch()" class="secondary-btn">Clear</button>
-        </div>
       </section>
 
       <!-- ADVANCE -->
@@ -494,6 +492,10 @@
       <h3>Advance Records</h3>
       <span id="advanceCount">0 records</span>
     </div>
+    <div class="table-actions compact-search">
+      <input type="search" id="advanceSearch" placeholder="Search advances by person or payment mode" />
+      <button onclick="clearAdvanceSearch()" class="secondary-btn small-btn">Clear</button>
+    </div>
 
     <div class="table-wrapper">
       <table>
@@ -520,11 +522,7 @@
       </table>
     </div>
   </section>
-      <div class="table-actions" style="margin-top:12px; display:flex; gap:8px; align-items:center;">
-        <input type="search" id="advanceSearch" placeholder="Search advances by person or payment mode" style="flex:1; padding:8px;" />
-        <button onclick="clearAdvanceSearch()" class="secondary-btn">Clear</button>
-      </div>
-</section>
+    </section>
 
       <!-- MONTHLY SUMMARY -->
       <section id="monthly" class="page">

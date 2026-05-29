@@ -494,3 +494,29 @@ tbody tr:nth-child(even) {
   justify-content: center;
   flex-wrap: wrap;
 }
+
+/* Compact search / small buttons for table filters */
+.table-actions.compact-search {
+  margin-top: 8px;
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.table-actions.compact-search input[type="search"] {
+  min-height: 32px;
+  padding: 6px 10px;
+  font-size: 14px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  flex: 1;
+  max-width: 900px;
+}
+
+.table-actions.compact-search .small-btn,
+.small-btn {
+  min-height: 32px;
+  padding: 6px 10px;
+  font-size: 13px;
+  border-radius: 8px;
+}
