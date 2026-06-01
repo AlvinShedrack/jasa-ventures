@@ -16,14 +16,31 @@ let editingRecord = {
 const salesQuantityInput = document.getElementById("salesQuantity");
 const salesPriceInput = document.getElementById("salesPrice");
 const salesAmountInput = document.getElementById("salesAmount");
+const salesAmountPaidInput = document.getElementById("salesAmountPaid");
+const salesPaidByInput = document.getElementById("salesPaidBy");
+const salesBalanceInput = document.getElementById("salesBalanceRemaining");
 
-[salesQuantityInput, salesPriceInput].forEach(input => {
-  input.addEventListener("input", () => {
-    const qty = Number(salesQuantityInput.value) || 0;
-    const price = Number(salesPriceInput.value) || 0;
-    salesAmountInput.value = (qty * price).toFixed(2);
-  });
+function updateSalesValues() {
+  const qty = Number(salesQuantityInput.value) || 0;
+  const price = Number(salesPriceInput.value) || 0;
+  const amount = qty * price;
+  if (salesAmountInput) salesAmountInput.value = amount.toFixed(2);
+  updateSalesBalance();
+}
+
+function updateSalesBalance() {
+  const amount = Number(salesAmountInput?.value) || 0;
+  const paid = Number(salesAmountPaidInput?.value) || 0;
+  if (salesBalanceInput) salesBalanceInput.value = Math.max(amount - paid, 0).toFixed(2);
+}
+
+[salesQuantityInput, salesPriceInput].forEach((input) => {
+  if (input) input.addEventListener("input", updateSalesValues);
 });
+if (salesAmountPaidInput) {
+  salesAmountPaidInput.addEventListener("input", updateSalesBalance);
+}
+
 
 const advEstPriceInput = document.getElementById("advanceEstimatedPrice");
 const advEstKgInput = document.getElementById("advanceEstimatedKg");
@@ -103,6 +120,9 @@ function attachFormulaListeners() {
     if (field) field.addEventListener("input", updatePurchaseAmount);
   });
 
+  const purchaseAmountPaidField = document.getElementById("purchaseAmountPaid");
+  if (purchaseAmountPaidField) purchaseAmountPaidField.addEventListener("input", updatePurchaseBalance);
+
   ["costSalesQuantity", "costSalesPrice"].forEach((id) => {
     const field = document.getElementById(id);
     if (field) field.addEventListener("input", updateCostSalesAmount);
@@ -117,7 +137,16 @@ function attachFormulaListeners() {
 function updatePurchaseAmount() {
   const quantity = Number(document.getElementById("purchaseQuantity").value || 0);
   const price = Number(document.getElementById("purchasePrice").value || 0);
-  document.getElementById("purchaseAmount").value = quantity * price || "";
+  const amount = quantity * price;
+  document.getElementById("purchaseAmount").value = amount || "";
+  updatePurchaseBalance();
+}
+
+function updatePurchaseBalance() {
+  const amount = Number(document.getElementById("purchaseAmount").value) || 0;
+  const paid = Number(document.getElementById("purchaseAmountPaid")?.value) || 0;
+  const balance = Math.max(amount - paid, 0);
+  document.getElementById("purchaseBalanceRemaining").value = balance.toFixed(2);
 }
 
 function updateCostSalesAmount() {
@@ -158,12 +187,25 @@ function openPage(pageId, buttonElement) {
 }
 
 function migrateOldRecords() {
+  salesRecords = salesRecords.map((record) => ({
+    ...record,
+    quantity: Number(record.quantity || 0),
+    price: Number(record.price || 0),
+    amount: Number(record.amount || (Number(record.quantity || 0) * Number(record.price || 0))),
+    amountPaid: Number(record.amountPaid || 0),
+    paidBy: record.paidBy || "",
+    balanceRemaining: Number(record.balanceRemaining ?? (Number(record.amount || 0) - Number(record.amountPaid || 0)))
+  }));
+
   purchaseRecords = purchaseRecords.map((record) => ({
     ...record,
     type: record.type || "Other",
     quantity: Number(record.quantity || 1),
     price: Number(record.price || record.amount || 0),
-    amount: Number(record.amount || (Number(record.quantity || 1) * Number(record.price || 0)))
+    amount: Number(record.amount || (Number(record.quantity || 1) * Number(record.price || 0))),
+    boughtBy: record.boughtBy || "",
+    amountPaid: Number(record.amountPaid || 0),
+    balanceRemaining: Number(record.balanceRemaining ?? (Number(record.amount || 0) - Number(record.amountPaid || 0)))
   }));
 
   costSalesRecords = costSalesRecords.map((record) => ({
@@ -288,6 +330,9 @@ document.getElementById("salesForm").addEventListener("submit", function (event)
   const quantity = Number(document.getElementById("salesQuantity").value) || 0;
   const price = Number(document.getElementById("salesPrice").value) || 0;
   const amount = Number(document.getElementById("salesAmount").value) || quantity * price;
+  const amountPaid = Number(document.getElementById("salesAmountPaid").value) || 0;
+  const paidBy = document.getElementById("salesPaidBy").value.trim();
+  const balanceRemaining = Math.max(amount - amountPaid, 0);
 
   // Detailed validation with field-specific messages
   const errors = [];
@@ -295,6 +340,8 @@ document.getElementById("salesForm").addEventListener("submit", function (event)
   if (!description) errors.push("Description / Customer is required.");
   if (quantity <= 0) errors.push("Quantity must be greater than zero.");
   if (price <= 0) errors.push("Price must be greater than zero.");
+  if (amountPaid < 0) errors.push("Amount paid must be zero or more.");
+  if (amountPaid > amount) errors.push("Amount paid cannot exceed total amount.");
 
   if (errors.length) {
     alert("Please fix the following:\n- " + errors.join("\n- "));
@@ -308,7 +355,10 @@ document.getElementById("salesForm").addEventListener("submit", function (event)
     invoice,
     quantity,
     price,
-    amount
+    amount,
+    amountPaid,
+    paidBy,
+    balanceRemaining
   };
 
   if (editingRecord.sales) {
@@ -455,14 +505,18 @@ function renderSales() {
       <td>${idx + 1}</td>
       <td>${formatDate(record.date)}</td>
       <td>${escapeHTML(record.description)}</td>
-      <td>${escapeHTML(record.invoice || "-")}</td>
+        <td>${escapeHTML(record.invoice || "-")}</td>
       <td>${Number(record.quantity || 0).toFixed(2)}</td>
       <td>${Number(record.price || 0).toFixed(2)}</td>
       <td>${amount.toFixed(2)}</td>
+      <td>${formatMoney(Number(record.amountPaid || 0))}</td>
+      <td>${escapeHTML(record.paidBy || "-")}</td>
+      <td>${formatMoney(Number(record.balanceRemaining ?? amount - Number(record.amountPaid || 0)))}</td>
       <td>${month}</td>
       <td>
         <div class="action-buttons">
           <button class="edit-btn" onclick="editSale('${record.id}')">Edit</button>
+          <button class="receipt-btn" onclick="generateSalesReceipt('${record.id}')">Receipt</button>
           <button class="delete-btn" onclick="deleteSale('${record.id}')">Delete</button>
         </div>
       </td>
@@ -501,12 +555,26 @@ document.getElementById("purchaseForm").addEventListener("submit", function (eve
   const type = document.getElementById("purchaseType").value;
   const description = document.getElementById("purchaseDescription").value.trim();
   const receipt = document.getElementById("purchaseReceipt").value.trim();
+  const boughtBy = document.getElementById("purchaseBoughtBy").value.trim();
   const quantity = Number(document.getElementById("purchaseQuantity").value);
   const price = Number(document.getElementById("purchasePrice").value);
   const amount = quantity * price;
+  const amountPaid = Number(document.getElementById("purchaseAmountPaid").value) || 0;
+  const balanceRemaining = Math.max(amount - amountPaid, 0);
 
-  if (!date || !type || !description || quantity <= 0 || price <= 0 || amount <= 0) {
-    alert("Please enter valid purchase details.");
+  const errors = [];
+  if (!date) errors.push("Date is required.");
+  if (!type) errors.push("Purchase type is required.");
+  if (!description) errors.push("Supplier / Description is required.");
+  if (!boughtBy) errors.push("Bought by is required.");
+  if (quantity <= 0) errors.push("Quantity must be greater than zero.");
+  if (price <= 0) errors.push("Price must be greater than zero.");
+  if (amount <= 0) errors.push("Amount must be greater than zero.");
+  if (amountPaid < 0) errors.push("Amount paid must be zero or more.");
+  if (amountPaid > amount) errors.push("Amount paid cannot exceed total amount.");
+
+  if (errors.length) {
+    alert("Please fix the following:\n- " + errors.join("\n- "));
     return;
   }
 
@@ -516,9 +584,12 @@ document.getElementById("purchaseForm").addEventListener("submit", function (eve
     type,
     description,
     receipt,
+    boughtBy,
     quantity,
     price,
-    amount
+    amount,
+    amountPaid,
+    balanceRemaining
   };
 
   if (editingRecord.purchase) {
@@ -564,9 +635,12 @@ function renderPurchases() {
         <td>${escapeHTML(record.type || "Other")}</td>
         <td>${escapeHTML(record.description)}</td>
         <td>${escapeHTML(record.receipt || "-")}</td>
+        <td>${escapeHTML(record.boughtBy || "-")}</td>
         <td>${formatNumber(record.quantity)}</td>
         <td>${formatMoney(record.price)}</td>
         <td class="debit">${formatMoney(record.amount)}</td>
+        <td>${formatMoney(Number(record.amountPaid || 0))}</td>
+        <td>${formatMoney(Number(record.balanceRemaining ?? (record.amount - Number(record.amountPaid || 0))))}</td>
         <td>${getMonthName(record.date)}</td>
         <td>
           <div class="action-buttons">
@@ -586,6 +660,189 @@ function deletePurchase(id) {
   purchaseRecords = purchaseRecords.filter((record) => String(record.id) !== String(id));
   saveAll();
   renderAll();
+}
+
+function generateSalesReceipt(id) {
+  const record = salesRecords.find((r) => String(r.id) === String(id));
+  if (!record) {
+    alert("Sales record not found.");
+    return;
+  }
+
+  const receiptHTML = `
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>Sales Receipt - ${escapeHTML(record.invoice || "No Invoice")}</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      color: #222;
+      margin: 20px;
+      background: white;
+    }
+    .receipt-container {
+      width: 100%;
+      max-width: 600px;
+      margin: 0 auto;
+      border: 2px solid #243865;
+      border-radius: 10px;
+      padding: 20px;
+      background: white;
+    }
+    .receipt-header {
+      text-align: center;
+      border-bottom: 2px solid #243865;
+      padding-bottom: 15px;
+      margin-bottom: 20px;
+    }
+    .receipt-header h1 {
+      color: #243865;
+      margin: 0 0 5px;
+      font-size: 24px;
+    }
+    .receipt-header p {
+      margin: 3px 0;
+      color: #666;
+      font-size: 12px;
+    }
+    .receipt-content {
+      margin: 20px 0;
+    }
+    .receipt-section {
+      margin-bottom: 20px;
+    }
+    .receipt-section h3 {
+      color: #243865;
+      margin: 10px 0 8px;
+      font-size: 14px;
+      text-transform: uppercase;
+      border-bottom: 1px solid #e7ad4a;
+      padding-bottom: 5px;
+    }
+    .receipt-row {
+      display: flex;
+      justify-content: space-between;
+      margin-bottom: 8px;
+      font-size: 13px;
+    }
+    .receipt-row label {
+      font-weight: bold;
+      color: #243865;
+      min-width: 120px;
+    }
+    .receipt-row value {
+      text-align: right;
+      color: #333;
+    }
+    .receipt-total {
+      display: flex;
+      justify-content: space-between;
+      margin-top: 15px;
+      padding-top: 15px;
+      border-top: 2px solid #243865;
+      font-weight: bold;
+      font-size: 16px;
+      color: #243865;
+    }
+    .receipt-footer {
+      text-align: center;
+      margin-top: 20px;
+      padding-top: 15px;
+      border-top: 1px solid #ddd;
+      font-size: 11px;
+      color: #666;
+    }
+    @media print {
+      body { margin: 0; padding: 0; }
+      .receipt-container { border: none; box-shadow: none; }
+    }
+  </style>
+</head>
+<body>
+  <div class="receipt-container">
+    <div class="receipt-header">
+      <h1>SALES RECEIPT</h1>
+      <p>Jasa Ventures</p>
+      <p>Generated: ${formatDateTimeForReport(new Date())}</p>
+    </div>
+    
+    <div class="receipt-content">
+      <div class="receipt-section">
+        <h3>Invoice Details</h3>
+        <div class="receipt-row">
+          <label>Invoice No:</label>
+          <value>${escapeHTML(record.invoice || "N/A")}</value>
+        </div>
+        <div class="receipt-row">
+          <label>Date:</label>
+          <value>${formatDate(record.date)}</value>
+        </div>
+      </div>
+
+      <div class="receipt-section">
+        <h3>Customer Details</h3>
+        <div class="receipt-row">
+          <label>Customer:</label>
+          <value>${escapeHTML(record.description)}</value>
+        </div>
+        <div class="receipt-row">
+          <label>Paid By:</label>
+          <value>${escapeHTML(record.paidBy || "-")}</value>
+        </div>
+      </div>
+
+      <div class="receipt-section">
+        <h3>Sale Details</h3>
+        <div class="receipt-row">
+          <label>Quantity:</label>
+          <value>${formatNumber(record.quantity)}</value>
+        </div>
+        <div class="receipt-row">
+          <label>Unit Price:</label>
+          <value>${formatMoney(record.price)}</value>
+        </div>
+        <div class="receipt-row">
+          <label>Total Amount:</label>
+          <value>${formatMoney(record.amount)}</value>
+        </div>
+        <div class="receipt-row">
+          <label>Amount Paid:</label>
+          <value>${formatMoney(record.amountPaid || 0)}</value>
+        </div>
+        <div class="receipt-row">
+          <label>Balance:</label>
+          <value>${formatMoney(record.balanceRemaining ?? (record.amount - Number(record.amountPaid || 0)))}</value>
+        </div>
+      </div>
+
+      <div class="receipt-section">
+        <h3>Additional Info</h3>
+        <div class="receipt-row">
+          <label>Month:</label>
+          <value>${getMonthName(record.date)}</value>
+        </div>
+      </div>
+    </div>
+
+    <div class="receipt-footer">
+      <p>This is a system-generated receipt. Retain for your records.</p>
+      <p>&copy; 2026 Jasa Ventures. All rights reserved.</p>
+    </div>
+  </div>
+</body>
+</html>`;
+
+  const printWindow = window.open("", "_blank");
+  printWindow.document.open();
+  printWindow.document.write(receiptHTML);
+  printWindow.document.close();
+  
+  printWindow.onload = function () {
+    printWindow.focus();
+    printWindow.print();
+  };
 }
 
 function generatePurchaseReceipt(id) {
@@ -704,6 +961,18 @@ function generatePurchaseReceipt(id) {
         <div class="receipt-row">
           <label>Date:</label>
           <value>${formatDate(record.date)}</value>
+        </div>
+        <div class="receipt-row">
+          <label>Bought By:</label>
+          <value>${escapeHTML(record.boughtBy || "-")}</value>
+        </div>
+        <div class="receipt-row">
+          <label>Amount Paid:</label>
+          <value>${formatMoney(record.amountPaid || 0)}</value>
+        </div>
+        <div class="receipt-row">
+          <label>Balance:</label>
+          <value>${formatMoney(record.balanceRemaining ?? (record.amount - Number(record.amountPaid || 0)))}</value>
         </div>
       </div>
 
@@ -1017,6 +1286,9 @@ function editSale(id) {
   document.getElementById("salesQuantity").value = record.quantity || "";
   document.getElementById("salesPrice").value = record.price || "";
   document.getElementById("salesAmount").value = Number(record.amount || (record.quantity * record.price) || 0).toFixed(2);
+  document.getElementById("salesAmountPaid").value = Number(record.amountPaid || 0).toFixed(2);
+  document.getElementById("salesPaidBy").value = record.paidBy || "";
+  document.getElementById("salesBalanceRemaining").value = Number(record.balanceRemaining ?? (Number(record.amount || 0) - Number(record.amountPaid || 0))).toFixed(2);
 
   editingRecord.sales = record.id;
   document.getElementById("salesSubmitBtn").textContent = "Update Sale";
@@ -1034,9 +1306,12 @@ function editPurchase(id) {
   document.getElementById("purchaseType").value = record.type || "Other";
   document.getElementById("purchaseDescription").value = record.description;
   document.getElementById("purchaseReceipt").value = record.receipt || "";
+  document.getElementById("purchaseBoughtBy").value = record.boughtBy || "";
   document.getElementById("purchaseQuantity").value = record.quantity;
   document.getElementById("purchasePrice").value = record.price;
   document.getElementById("purchaseAmount").value = record.amount;
+  document.getElementById("purchaseAmountPaid").value = Number(record.amountPaid || 0).toFixed(2);
+  document.getElementById("purchaseBalanceRemaining").value = Number(record.balanceRemaining ?? (Number(record.amount || 0) - Number(record.amountPaid || 0))).toFixed(2);
 
   editingRecord.purchase = record.id;
   document.getElementById("purchaseSubmitBtn").textContent = "Update Purchase";
