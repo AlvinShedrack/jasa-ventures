@@ -99,9 +99,7 @@ let syncInProgress = false;
 let syncTimer = null;
 
 const supabaseClient =
-  window.supabase &&
-  SUPABASE_URL !== "https://yzojckfksrrenwzlsbhg.supabase.co" &&
-  SUPABASE_ANON_KEY !== "sb_publishable_x-6AyRV9tEsMzj1O-wXf4w_vYHHozwd"
+  window.supabase && SUPABASE_URL && SUPABASE_ANON_KEY
     ? window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY)
     : null;
 /*
