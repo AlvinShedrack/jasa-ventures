@@ -342,6 +342,7 @@ function deleteLedger(id) {
   if (!confirm("Delete this ledger record?")) return;
 
   ledgerRecords = ledgerRecords.filter((record) => String(record.id) !== String(id));
+   setLocalUpdatedAt(Date.now());
   saveAll();
   renderAll();
 }
@@ -567,6 +568,7 @@ function deleteSale(id) {
   if (!confirm("Delete this sales record?")) return;
 
   salesRecords = salesRecords.filter((record) => String(record.id) !== String(id));
+  setLocalUpdatedAt(Date.now());
   saveAll();
   renderAll();
 }
@@ -688,6 +690,7 @@ function deletePurchase(id) {
   if (!confirm("Delete this purchase record?")) return;
 
   purchaseRecords = purchaseRecords.filter((record) => String(record.id) !== String(id));
+  setLocalUpdatedAt(Date.now());
   saveAll();
   renderAll();
 }
@@ -1154,6 +1157,7 @@ function deleteCostSale(id) {
   if (!confirm("Delete this cost of sales record?")) return;
 
   costSalesRecords = costSalesRecords.filter((record) => String(record.id) !== String(id));
+    setLocalUpdatedAt(Date.now());
   saveAll();
   renderAll();
 }
@@ -1287,6 +1291,7 @@ function deleteAdvance(id) {
   if (!confirm("Delete this advance record?")) return;
 
   advanceRecords = advanceRecords.filter((record) => String(record.id) !== String(id));
+  setLocalUpdatedAt(Date.now());
   saveAll();
   renderAll();
 }
@@ -3100,14 +3105,27 @@ async function syncWithSupabase(options = {}) {
       STEP 2: Merge local data and Supabase data
       This prevents a second phone from wiping cloud data.
     */
-    const mergedUpdatedAt = Math.max(localUpdatedAt, remoteUpdatedAt, Date.now());
+    let mergedBundle;
+    let mergedUpdatedAt = Math.max(localUpdatedAt, remoteUpdatedAt, Date.now());
 
-    const mergedBundle = mergeBundles(
-      localBundle,
-      remoteBundle,
-      localUpdatedAt,
-      remoteUpdatedAt
-    );
+    if (localUpdatedAt > remoteUpdatedAt) {
+      // Local device is newer, so push local changes to Supabase.
+      // This allows delete and edit to stay deleted/edited.
+      mergedBundle = localBundle;
+      mergedUpdatedAt = localUpdatedAt;
+    } else if (remoteUpdatedAt > localUpdatedAt) {
+      // Supabase is newer, so use cloud data.
+      mergedBundle = remoteBundle;
+      mergedUpdatedAt = remoteUpdatedAt;
+    } else {
+      // Same timestamp or unclear, then merge safely.
+      mergedBundle = mergeBundles(
+        localBundle,
+        remoteBundle,
+        localUpdatedAt,
+        remoteUpdatedAt
+      );
+    }
 
     /*
       If both sides have no data, do not upload anything.
