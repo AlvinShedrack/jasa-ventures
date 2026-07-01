@@ -32,7 +32,15 @@
         </div>
       </div>
 
-      <div id="onlineStatus" class="status-badge">Checking...</div>
+      <div class="header-actions">
+        <button type="button" id="syncBtn" class="sync-btn" onclick="manualSyncToSupabase()">
+          Sync
+        </button>
+
+        <div id="syncStatus" class="sync-status">Not synced</div>
+
+        <div id="onlineStatus" class="status-badge">Checking...</div>
+      </div>
     </header>
 
     <nav class="tabs">
@@ -624,6 +632,10 @@
   </footer>
   <script src="libs/exceljs.min.js"></script>
   <script src="libs/jspdf.umd.min.js"></script>
+  <script src="libs/exceljs.min.js"></script>
+  <script src="libs/jspdf.umd.min.js"></script>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="script.js"></script>
   
 </body>

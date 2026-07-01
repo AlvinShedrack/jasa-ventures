@@ -81,6 +81,29 @@ function updateExcessDelivery() {
 const onlineStatus = document.getElementById("onlineStatus");
 const installBtn = document.getElementById("installBtn");
 
+const syncBtn = document.getElementById("syncBtn");
+const syncStatus = document.getElementById("syncStatus");
+
+/*
+  Replace these with your Supabase Project URL and anon/public key.
+  All devices must use the same URL, anon key, and SUPABASE_SYNC_KEY.
+*/
+const SUPABASE_URL = "https://yzojckfksrrenwzlsbhg.supabase.co";
+const SUPABASE_ANON_KEY = "sb_publishable_x-6AyRV9tEsMzj1O-wXf4w_vYHHozwd";
+
+const SUPABASE_SYNC_TABLE = "jasa_device_sync";
+const SUPABASE_SYNC_KEY = "jasa_ventures_main";
+
+let syncBooting = true;
+let syncInProgress = false;
+let syncTimer = null;
+
+const supabaseClient =
+  window.supabase &&
+  SUPABASE_URL !== "https://yzojckfksrrenwzlsbhg.supabase.co" &&
+  SUPABASE_ANON_KEY !== "sb_publishable_x-6AyRV9tEsMzj1O-wXf4w_vYHHozwd"
+    ? window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY)
+    : null;
 /*
   Replace this email with the email where Jasa Ventures backups should be sent.
 */
@@ -97,6 +120,12 @@ setDefaultDates();
 attachFormulaListeners();
 migrateOldRecords();
 renderAll();
+
+syncBooting = false;
+
+if (navigator.onLine) {
+  queueSupabaseSync(1000);
+}
 
 function setDefaultDates() {
   const today = new Date();
@@ -245,7 +274,8 @@ document.getElementById("ledgerForm").addEventListener("submit", function (event
     date,
     description,
     type,
-    amount
+    amount,
+    _updatedAt: Date.now()
   };
 
   if (editingRecord.ledger) {
@@ -358,7 +388,8 @@ document.getElementById("salesForm").addEventListener("submit", function (event)
     amount,
     amountPaid,
     paidBy,
-    balanceRemaining
+    balanceRemaining,
+    _updatedAt: Date.now()
   };
 
   if (editingRecord.sales) {
@@ -589,7 +620,8 @@ document.getElementById("purchaseForm").addEventListener("submit", function (eve
     price,
     amount,
     amountPaid,
-    balanceRemaining
+    balanceRemaining,
+    _updatedAt: Date.now()
   };
 
   if (editingRecord.purchase) {
@@ -1059,7 +1091,8 @@ document.getElementById("costSalesForm").addEventListener("submit", function (ev
     reference,
     quantity,
     price,
-    amount
+    amount,
+    _updatedAt: Date.now()
   };
 
   if (editingRecord.costSales) {
@@ -1176,7 +1209,8 @@ document.getElementById("advanceForm").addEventListener("submit", function (even
     netWeight,
     price,
     amountRecovered,
-    excessDelivery
+    excessDelivery,
+    _updatedAt: Date.now()
   };
 
   if (editingRecord.advance) {
@@ -2697,12 +2731,23 @@ function getMonthlyTextRows() {
    STORAGE AND HELPERS
 ========================= */
 
-function saveAll() {
+function saveAll(options = {}) {
+  const markDirty = options.markDirty ?? !syncBooting;
+  const schedule = options.schedule ?? !syncBooting;
+
   localStorage.setItem("jasa_ledger_records", JSON.stringify(ledgerRecords));
   localStorage.setItem("jasa_sales_records", JSON.stringify(salesRecords));
   localStorage.setItem("jasa_purchase_records", JSON.stringify(purchaseRecords));
   localStorage.setItem("jasa_cost_sales_records", JSON.stringify(costSalesRecords));
   localStorage.setItem("jasa_advance_records", JSON.stringify(advanceRecords));
+
+  if (markDirty) {
+    localStorage.setItem("jasa_last_modified", String(Date.now()));
+  }
+
+  if (schedule && navigator.onLine) {
+    queueSupabaseSync();
+  }
 }
 
 function renderAll() {
@@ -2857,7 +2902,264 @@ function downloadFile(content, filename, type) {
 
   URL.revokeObjectURL(url);
 }
+/* =========================
+   SUPABASE 2-WAY SYNC
+   Pull first -> Merge -> Save Local -> Push Back
+========================= */
 
+function getLocalBundle() {
+  return {
+    ledgerRecords,
+    salesRecords,
+    purchaseRecords,
+    costSalesRecords,
+    advanceRecords
+  };
+}
+
+function hasAnyRecord(bundle = getLocalBundle()) {
+  return (
+    (bundle.ledgerRecords || []).length > 0 ||
+    (bundle.salesRecords || []).length > 0 ||
+    (bundle.purchaseRecords || []).length > 0 ||
+    (bundle.costSalesRecords || []).length > 0 ||
+    (bundle.advanceRecords || []).length > 0
+  );
+}
+
+function getLocalUpdatedAt() {
+  return Number(localStorage.getItem("jasa_last_modified") || 0);
+}
+
+function setLocalUpdatedAt(value) {
+  localStorage.setItem("jasa_last_modified", String(value || Date.now()));
+}
+
+function normalizeRecord(record, fallbackTime) {
+  return {
+    ...record,
+    _updatedAt: Number(record._updatedAt || fallbackTime || Date.now())
+  };
+}
+
+function mergeRecordArrays(localArray = [], remoteArray = [], localTime = 0, remoteTime = 0) {
+  const mergedMap = new Map();
+
+  remoteArray.forEach((record) => {
+    const cleanRecord = normalizeRecord(record, remoteTime);
+    mergedMap.set(String(cleanRecord.id), cleanRecord);
+  });
+
+  localArray.forEach((record) => {
+    const cleanRecord = normalizeRecord(record, localTime);
+    const existing = mergedMap.get(String(cleanRecord.id));
+
+    if (!existing || Number(cleanRecord._updatedAt || 0) >= Number(existing._updatedAt || 0)) {
+      mergedMap.set(String(cleanRecord.id), cleanRecord);
+    }
+  });
+
+  return Array.from(mergedMap.values());
+}
+
+function mergeBundles(localBundle, remoteBundle, localTime, remoteTime) {
+  return {
+    ledgerRecords: mergeRecordArrays(
+      localBundle.ledgerRecords,
+      remoteBundle.ledgerRecords,
+      localTime,
+      remoteTime
+    ),
+
+    salesRecords: mergeRecordArrays(
+      localBundle.salesRecords,
+      remoteBundle.salesRecords,
+      localTime,
+      remoteTime
+    ),
+
+    purchaseRecords: mergeRecordArrays(
+      localBundle.purchaseRecords,
+      remoteBundle.purchaseRecords,
+      localTime,
+      remoteTime
+    ),
+
+    costSalesRecords: mergeRecordArrays(
+      localBundle.costSalesRecords,
+      remoteBundle.costSalesRecords,
+      localTime,
+      remoteTime
+    ),
+
+    advanceRecords: mergeRecordArrays(
+      localBundle.advanceRecords,
+      remoteBundle.advanceRecords,
+      localTime,
+      remoteTime
+    )
+  };
+}
+
+function applyBundleToLocal(bundle, updatedAt) {
+  ledgerRecords = Array.isArray(bundle.ledgerRecords) ? bundle.ledgerRecords : [];
+  salesRecords = Array.isArray(bundle.salesRecords) ? bundle.salesRecords : [];
+  purchaseRecords = Array.isArray(bundle.purchaseRecords) ? bundle.purchaseRecords : [];
+  costSalesRecords = Array.isArray(bundle.costSalesRecords) ? bundle.costSalesRecords : [];
+  advanceRecords = Array.isArray(bundle.advanceRecords) ? bundle.advanceRecords : [];
+
+  saveAll({ markDirty: false, schedule: false });
+  setLocalUpdatedAt(updatedAt || Date.now());
+  renderAll();
+}
+
+function setSyncStatus(message, type = "normal") {
+  if (!syncStatus) return;
+
+  syncStatus.textContent = message;
+
+  if (type === "success") {
+    syncStatus.style.color = "#0f8a3a";
+  } else if (type === "error") {
+    syncStatus.style.color = "#b42318";
+  } else if (type === "warning") {
+    syncStatus.style.color = "#9a6400";
+  } else {
+    syncStatus.style.color = "#555";
+  }
+}
+
+function queueSupabaseSync(delay = 1500) {
+  if (syncBooting || !navigator.onLine) return;
+
+  clearTimeout(syncTimer);
+  syncTimer = setTimeout(() => {
+    syncWithSupabase();
+  }, delay);
+}
+
+async function manualSyncToSupabase() {
+  await syncWithSupabase({ manual: true });
+}
+
+window.manualSyncToSupabase = manualSyncToSupabase;
+
+async function syncWithSupabase(options = {}) {
+  const manual = options.manual || false;
+
+  if (!supabaseClient) {
+    setSyncStatus("Supabase not configured", "error");
+
+    if (manual) {
+      alert("Add your Supabase URL and anon key in script.js first.");
+    }
+
+    return;
+  }
+
+  if (!navigator.onLine) {
+    setSyncStatus("Waiting for internet", "warning");
+
+    if (manual) {
+      alert("You are offline. Sync will run when internet is available.");
+    }
+
+    return;
+  }
+
+  if (syncInProgress) return;
+
+  syncInProgress = true;
+  if (syncBtn) syncBtn.disabled = true;
+  setSyncStatus("Downloading from Supabase...", "normal");
+
+  try {
+    const localBundle = getLocalBundle();
+    const localUpdatedAt = getLocalUpdatedAt();
+
+    /*
+      STEP 1: Always download from Supabase first
+    */
+    const { data: remoteRow, error: pullError } = await supabaseClient
+      .from(SUPABASE_SYNC_TABLE)
+      .select("sync_key,data,local_updated_at,synced_at")
+      .eq("sync_key", SUPABASE_SYNC_KEY)
+      .maybeSingle();
+
+    if (pullError) throw pullError;
+
+    const remoteBundle = remoteRow?.data || {
+      ledgerRecords: [],
+      salesRecords: [],
+      purchaseRecords: [],
+      costSalesRecords: [],
+      advanceRecords: []
+    };
+
+    const remoteUpdatedAt = Number(remoteRow?.local_updated_at || 0);
+
+    /*
+      STEP 2: Merge local data and Supabase data
+      This prevents a second phone from wiping cloud data.
+    */
+    const mergedUpdatedAt = Math.max(localUpdatedAt, remoteUpdatedAt, Date.now());
+
+    const mergedBundle = mergeBundles(
+      localBundle,
+      remoteBundle,
+      localUpdatedAt,
+      remoteUpdatedAt
+    );
+
+    /*
+      If both sides have no data, do not upload anything.
+    */
+    if (!hasAnyRecord(mergedBundle)) {
+      setSyncStatus("No records to sync", "normal");
+      return;
+    }
+
+    /*
+      STEP 3: Save merged data to this device first
+      This is what makes the second device show the Supabase records.
+    */
+    setSyncStatus("Saving downloaded records...", "normal");
+    applyBundleToLocal(mergedBundle, mergedUpdatedAt);
+
+    /*
+      STEP 4: Upload the merged result back to Supabase
+      This completes the 2-way sync.
+    */
+    setSyncStatus("Uploading merged records...", "normal");
+
+    const { error: pushError } = await supabaseClient
+      .from(SUPABASE_SYNC_TABLE)
+      .upsert(
+        {
+          sync_key: SUPABASE_SYNC_KEY,
+          data: mergedBundle,
+          local_updated_at: mergedUpdatedAt,
+          synced_at: new Date().toISOString()
+        },
+        { onConflict: "sync_key" }
+      );
+
+    if (pushError) throw pushError;
+
+    localStorage.setItem("jasa_last_synced", String(Date.now()));
+    setSyncStatus("2-way sync complete", "success");
+  } catch (error) {
+    console.error("Supabase 2-way sync failed:", error);
+    setSyncStatus("Sync failed", "error");
+
+    if (manual) {
+      alert("Sync failed: " + (error.message || "Unknown error"));
+    }
+  } finally {
+    syncInProgress = false;
+    if (syncBtn) syncBtn.disabled = !navigator.onLine || !supabaseClient;
+  }
+}
 /* =========================
    ONLINE STATUS AND PWA
 ========================= */
@@ -2872,10 +3174,21 @@ function updateOnlineStatus() {
     onlineStatus.style.background = "#fff4e0";
     onlineStatus.style.color = "#9a6400";
   }
-}
 
-window.addEventListener("online", updateOnlineStatus);
-window.addEventListener("offline", updateOnlineStatus);
+  if (syncBtn) {
+    syncBtn.disabled = !navigator.onLine || !supabaseClient;
+  }
+} 
+
+window.addEventListener("online", function () {
+  updateOnlineStatus();
+  queueSupabaseSync(300);
+});
+
+window.addEventListener("offline", function () {
+  updateOnlineStatus();
+  setSyncStatus("Waiting for internet", "warning");
+});
 
 window.addEventListener("beforeinstallprompt", function (event) {
   event.preventDefault();
