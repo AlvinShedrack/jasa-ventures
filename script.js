@@ -25,7 +25,7 @@ const salesBalanceInput = document.getElementById("salesBalanceRemaining");
    USER AUTHENTICATION & ROLES
 ========================= */
 let users = JSON.parse(localStorage.getItem("jasa_users")) || [
-  { username: "admin", password: "password123", role: "admin" }
+  { username: "admin", password: "admin", role: "admin" }
 ];
 let currentUser = JSON.parse(localStorage.getItem("jasa_current_user")) || null;
 
@@ -591,7 +591,7 @@ function clearAdvanceSearch() {
   const el = document.getElementById("advanceSearch");
   if (el) {
     el.value = "";
-    renderAdvance();
+    renderAdvances();
   }
 }
 
@@ -642,11 +642,11 @@ if (_costSalesSearchEl) {
 // advance search
 const _advanceSearchEl = document.getElementById("advanceSearch");
 if (_advanceSearchEl) {
-  _advanceSearchEl.addEventListener("input", () => renderAdvance());
+  _advanceSearchEl.addEventListener("input", () => renderAdvances());
 } else {
   document.addEventListener("DOMContentLoaded", () => {
     const s = document.getElementById("advanceSearch");
-    if (s) s.addEventListener("input", () => renderAdvance());
+    if (s) s.addEventListener("input", () => renderAdvances());
   });
 }
 
@@ -2905,7 +2905,7 @@ function renderAll() {
   renderSales();
   renderPurchases();
   renderCostSales();
-  renderAdvance();
+  renderAdvances();
   renderDashboard();
   renderMonthlySummary();
   updateOnlineStatus();
