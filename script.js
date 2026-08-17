@@ -85,89 +85,42 @@ document.getElementById("addUserForm").addEventListener("submit", function (e) {
   renderUsers();
 });
 
-function renderUsers() {
+// Import or use your existing firebase db instance (e.g., firebase.firestore() or getFirestore())
+// Assuming 'db' is already initialized in your project:
+
+// 1. Render Users from Firebase Firestore
+async function renderUsers() {
   const tbody = document.getElementById('userTableBody'); 
   if (!tbody) return;
 
-  let users = JSON.parse(localStorage.getItem('users')) || [];
-  
-  tbody.innerHTML = users.map(user => `
-    <tr>
-      <td>${user.username}</td>
-      <td>${user.role || 'User'}</td>
-      <td>
-        <button class="btn-edit" onclick="openEditUserModal('${user.username}')">Edit</button>
-        <button class="btn-delete" onclick="deleteUser('${user.username}')" style="margin-left: 6px;">Delete</button>
-      </td>
-    </tr>
-  `).join('');
-}
-
-function deleteUser(username) {
-  if (username === "admin") {
-    alert("Cannot delete primary admin.");
-    return;
-  }
-  if (!confirm(`Delete user ${username}?`)) return;
-  users = users.filter(u => u.username !== username);
-  localStorage.setItem("jasa_users", JSON.stringify(users));
-  renderUsers();
-}
-
-// Apply role-based visibility upon loading or login
-function applyUserPermissions() {
-  if (!currentUser) {
-    document.getElementById("loginScreen").style.display = "flex";
-    return;
-  }
-
-  document.getElementById("loginScreen").style.display = "none";
-  document.getElementById("userInfoDisplay").textContent = `User: ${currentUser.username} (${currentUser.role.toUpperCase()});`;
-
-  const tabDashboard = document.getElementById("tabDashboard");
-  const tabMonthly = document.getElementById("tabMonthly");
-  const manageUsersBtn = document.getElementById("manageUsersBtn");
-
-  if (currentUser.role === "employee") {
-    // Hide Dashboard & Monthly Summary tabs for employees[cite: 1]
-    if (tabDashboard) tabDashboard.style.display = "none";
-    if (tabMonthly) tabMonthly.style.display = "none";
-    if (manageUsersBtn) manageUsersBtn.style.display = "none";
-
-    // Default employee to Ledger view if active page is restricted
-    const activePage = document.querySelector(".page.active-page");
-    if (activePage && (activePage.id === "dashboard" || activePage.id === "monthly")) {
-      openPage("ledger", document.querySelector("button[onclick*='ledger']"));
-    }
-  } else if (currentUser.role === "admin") {
-    if (tabDashboard) tabDashboard.style.display = "";
-    if (tabMonthly) tabMonthly.style.display = "";
-    if (manageUsersBtn) manageUsersBtn.style.display = "";
+  try {
+    // Fetch users collection from Firestore
+    const snapshot = await db.collection('users').get();
+    let users = [];
+    snapshot.forEach(doc => {
+      users.push({ id: doc.id, ...doc.data() });
+    });
+    
+    tbody.innerHTML = users.map(user => `
+      <tr>
+        <td>${user.username}</td>
+        <td>${user.role || 'User'}</td>
+        <td>
+          <button class="btn-edit" onclick="openEditUserModal('${user.id}', '${user.username}')">Edit</button>
+          <button class="btn-delete" onclick="deleteUser('${user.id}')" style="margin-left: 6px;">Delete</button>
+        </td>
+      </tr>
+    `).join('');
+  } catch (error) {
+    console.error("Error loading users from Firebase:", error);
   }
 }
 
-// Run permission check on DOM load
-document.addEventListener("DOMContentLoaded", () => {
-  if (currentUser) {
-    applyUserPermissions();
-  } else {
-    document.getElementById("loginScreen").style.display = "flex";
-  }
-});
-// Open modal and populate data
-function openEditUserModal(username) {
-  let users = JSON.parse(localStorage.getItem('users')) || [];
-  let user = users.find(u => u.username === username);
-
-  if (!user) {
-    alert("User not found!");
-    return;
-  }
-
-  document.getElementById('editUserOriginalUsername').value = user.username;
-  document.getElementById('editUsername').value = user.username;
+// 2. Open Edit Modal
+function openEditUserModal(docId, username) {
+  document.getElementById('editUserOriginalId').value = docId;
+  document.getElementById('editUsername').value = username;
   document.getElementById('editPassword').value = "";
-
   document.getElementById('editUserModal').style.display = 'block';
 }
 
@@ -175,38 +128,43 @@ function closeEditUserModal() {
   document.getElementById('editUserModal').style.display = 'none';
 }
 
-// Save edits
-function saveUserEdit(event) {
+// 3. Save User Edits to Firebase
+async function saveUserEdit(event) {
   event.preventDefault();
 
-  const originalUsername = document.getElementById('editUserOriginalUsername').value;
+  const docId = document.getElementById('editUserOriginalId').value;
   const newUsername = document.getElementById('editUsername').value.trim();
   const newPassword = document.getElementById('editPassword').value;
 
-  let users = JSON.parse(localStorage.getItem('users')) || [];
-  let userIndex = users.findIndex(u => u.username === originalUsername);
+  try {
+    let updateData = { username: newUsername };
+    if (newPassword) {
+      updateData.password = newPassword; // Note: Ensure you handle passwords securely in production
+    }
 
-  if (userIndex === -1) {
-    alert("Error: User record not found.");
-    return;
-  }
+    // Update document in Firestore
+    await db.collection('users').doc(docId).update(updateData);
 
-  if (newUsername !== originalUsername && users.some(u => u.username === newUsername)) {
-    alert("Username is already taken!");
-    return;
-  }
-
-  users[userIndex].username = newUsername;
-  if (newPassword) {
-    users[userIndex].password = newPassword;
-  }
-
-  localStorage.setItem('users', JSON.stringify(users));
-  alert("User updated successfully!");
-  closeEditUserModal();
-
-  if (typeof renderUsers === 'function') {
+    alert("User updated successfully across all devices!");
+    closeEditUserModal();
     renderUsers();
+  } catch (error) {
+    console.error("Error updating user:", error);
+    alert("Failed to update user.");
+  }
+}
+
+// 4. Delete User from Firebase
+async function deleteUser(docId) {
+  if (!confirm("Are you sure you want to delete this user?")) return;
+
+  try {
+    await db.collection('users').doc(docId).delete();
+    alert("User deleted successfully!");
+    renderUsers();
+  } catch (error) {
+    console.error("Error deleting user:", error);
+    alert("Failed to delete user.");
   }
 }
 function updateSalesValues() {
