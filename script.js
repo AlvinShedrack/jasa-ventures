@@ -58,45 +58,88 @@ function logoutUser() {
   location.reload();
 }
 
-// User Management Modal Actions (Admin only)
 function openUserModal() {
   if (!currentUser || currentUser.role !== "admin") return;
+
+  const modal = document.getElementById("userModal");
+  if (!modal) return;
+
   renderUserList();
-  document.getElementById("userModal").style.display = "flex";
+  modal.style.display = "flex";
 }
 
 function closeUserModal() {
-  document.getElementById("userModal").style.display = "none";
-}
-
-document.getElementById("addUserForm").addEventListener("submit", function (e) {
-  e.preventDefault();
-  if (!currentUser || currentUser.role !== "admin") return;
-
-  const username = document.getElementById("newUsername").value.trim();
-  const password = document.getElementById("newPassword").value;
-  const role = document.getElementById("newUserRole").value;
-
-  if (users.some(u => u.username === username)) {
-    alert("Username already exists.");
-    return;
+  const modal = document.getElementById("userModal");
+  if (modal) {
+    modal.style.display = "none";
   }
+}
+const addUserForm = document.getElementById("addUserForm");
 
-  users.push({ username, password, role });
-  localStorage.setItem("jasa_users", JSON.stringify(users));
-  alert("User created successfully!");
-  this.reset();
-  renderUserList();
-});
+if (addUserForm) {
+  addUserForm.addEventListener("submit", function (e) {
+    e.preventDefault();
+
+    if (!currentUser || currentUser.role !== "admin") {
+      return;
+    }
+
+    const username = document
+      .getElementById("newUsername")
+      .value.trim();
+
+    const password =
+      document.getElementById("newPassword").value;
+
+    const role =
+      document.getElementById("newUserRole").value;
+
+    if (users.some(u => u.username === username)) {
+      alert("Username already exists.");
+      return;
+    }
+
+    users.push({
+      username: username,
+      password: password,
+      role: role
+    });
+
+    localStorage.setItem(
+      "jasa_users",
+      JSON.stringify(users)
+    );
+
+    alert("User created successfully!");
+
+    this.reset();
+    renderUserList();
+  });
+}
 
 function renderUserList() {
   const container = document.getElementById("userListContainer");
+
+  if (!container) return;
+
   container.innerHTML = "";
+
   users.forEach((u, idx) => {
     container.innerHTML += `
-      <div style="display: flex; justify-content: space-between; align-items: center; padding: 6px; border-bottom: 1px solid #eee;">
-        <span><strong>${escapeHTML(u.username)}</strong> (${u.role})</span>
-        ${u.username !== "admin@jasa.com" ? `<button class="delete-btn" style="padding: 2px 6px; font-size: 11px;" onclick="deleteUser('${u.username}')">Delete</button>` : ""}
+      <div style="display:flex; justify-content:space-between; align-items:center; padding:6px; border-bottom:1px solid #eee;">
+        <span>
+          <strong>${escapeHTML(u.username)}</strong> (${u.role})
+        </span>
+
+        ${
+          u.username !== "admin@jasa.com"
+            ? `<button class="delete-btn"
+                 style="padding:2px 6px;font-size:11px;"
+                 onclick="deleteUser('${u.username}')">
+                 Delete
+               </button>`
+            : ""
+        }
       </div>
     `;
   });
@@ -294,7 +337,23 @@ function attachFormulaListeners() {
     if (field) field.addEventListener("input", updateAdvanceCalculations);
   });
 }
+// Stub for manual sync button click
+function manualSyncToSupabase() {
+  if (typeof syncWithSupabase === 'function') {
+    syncWithSupabase();
+  } else {
+    console.warn('Supabase sync logic not implemented yet.');
+  }
+}
 
+// Stub for queued background sync
+function queueSupabaseSync(delay = 1000) {
+  setTimeout(() => {
+    if (typeof syncWithSupabase === 'function' && navigator.onLine) {
+      syncWithSupabase();
+    }
+  }, delay);
+}
 function updatePurchaseAmount() {
   const quantity = Number(document.getElementById("purchaseQuantity").value || 0);
   const price = Number(document.getElementById("purchasePrice").value || 0);
@@ -3195,6 +3254,8 @@ function queueSupabaseSync(delay = 1500) {
 async function manualSyncToSupabase() {
   await syncWithSupabase({ manual: true });
 }
+
+window.manualSyncToSupabase = manualSyncToSupabase;
 
 window.manualSyncToSupabase = manualSyncToSupabase;
 
