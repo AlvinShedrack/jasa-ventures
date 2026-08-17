@@ -90,32 +90,34 @@ document.getElementById("addUserForm").addEventListener("submit", function (e) {
 
 // 1. Render Users from Firebase Firestore
 async function renderUsers() {
-  const tbody = document.getElementById('userTableBody'); 
-  if (!tbody) return;
-
-  try {
-    // Fetch users collection from Firestore
-    const snapshot = await db.collection('users').get();
-    let users = [];
-    snapshot.forEach(doc => {
-      users.push({ id: doc.id, ...doc.data() });
-    });
-    
-    tbody.innerHTML = users.map(user => `
-      <tr>
-        <td>${user.username}</td>
-        <td>${user.role || 'User'}</td>
-        <td>
-          <button class="btn-edit" onclick="openEditUserModal('${user.id}', '${user.username}')">Edit</button>
-          <button class="btn-delete" onclick="deleteUser('${user.id}')" style="margin-left: 6px;">Delete</button>
-        </td>
-      </tr>
-    `).join('');
-  } catch (error) {
-    console.error("Error loading users from Firebase:", error);
-  }
+    try {
+        const { data: users, error } = await supabase
+            .from('users')
+            .select('*');
+            
+        if (error) throw error;
+        
+        const userTableBody = document.getElementById('userTableBody'); // Update to match your HTML table ID
+        if (!userTableBody) return;
+        
+        userTableBody.innerHTML = '';
+        
+        users.forEach(user => {
+            const row = document.createElement('tr');
+            row.innerHTML = `
+                <td>${user.username || user.name}</td>
+                <td>${user.role || 'User'}</td>
+                <td>
+                    <button onclick="editUser('${user.id}')">Edit</button>
+                    <button onclick="deleteUser('${user.id}')">Delete</button>
+                </td>
+            `;
+            userTableBody.appendChild(row);
+        });
+    } catch (err) {
+        console.error('Error fetching users:', err.message);
+    }
 }
-
 // 2. Open Edit Modal
 function openEditUserModal(docId, username) {
   document.getElementById('editUserOriginalId').value = docId;
@@ -129,43 +131,39 @@ function closeEditUserModal() {
 }
 
 // 3. Save User Edits to Firebase
-async function saveUserEdit(event) {
-  event.preventDefault();
-
-  const docId = document.getElementById('editUserOriginalId').value;
-  const newUsername = document.getElementById('editUsername').value.trim();
-  const newPassword = document.getElementById('editPassword').value;
-
-  try {
-    let updateData = { username: newUsername };
-    if (newPassword) {
-      updateData.password = newPassword; // Note: Ensure you handle passwords securely in production
+async function saveUserEdit(userId, updatedData) {
+    try {
+        const { error } = await supabase
+            .from('users')
+            .update(updatedData)
+            .eq('id', userId); // Assumes your table uses 'id' as the primary key
+            
+        if (error) throw error;
+        
+        alert('User updated successfully!');
+        renderUsers();
+    } catch (err) {
+        console.error('Error updating user:', err.message);
+        alert('Failed to update user.');
     }
-
-    // Update document in Firestore
-    await db.collection('users').doc(docId).update(updateData);
-
-    alert("User updated successfully across all devices!");
-    closeEditUserModal();
-    renderUsers();
-  } catch (error) {
-    console.error("Error updating user:", error);
-    alert("Failed to update user.");
-  }
 }
-
 // 4. Delete User from Firebase
-async function deleteUser(docId) {
-  if (!confirm("Are you sure you want to delete this user?")) return;
-
-  try {
-    await db.collection('users').doc(docId).delete();
-    alert("User deleted successfully!");
-    renderUsers();
-  } catch (error) {
-    console.error("Error deleting user:", error);
-    alert("Failed to delete user.");
-  }
+async function deleteUser(userId) {
+    if (!confirm('Are you sure you want to delete this user?')) return;
+    
+    try {
+        const { error } = await supabase
+            .from('users')
+            .delete()
+            .eq('id', userId);
+            
+        if (error) throw error;
+        
+        renderUsers();
+    } catch (err) {
+        console.error('Error deleting user:', err.message);
+        alert('Failed to delete user.');
+    }
 }
 function updateSalesValues() {
   const qty = Number(salesQuantityInput.value) || 0;
