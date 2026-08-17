@@ -20,6 +20,136 @@ const salesAmountPaidInput = document.getElementById("salesAmountPaid");
 const salesPaidByInput = document.getElementById("salesPaidBy");
 const salesBalanceInput = document.getElementById("salesBalanceRemaining");
 
+
+/* =========================
+   USER AUTHENTICATION & ROLES
+========================= */
+let users = JSON.parse(localStorage.getItem("jasa_users")) || [
+  { username: "admin", password: "password123", role: "admin" }
+];
+let currentUser = JSON.parse(localStorage.getItem("jasa_current_user")) || null;
+
+// Handle Login Form Submission
+document.getElementById("loginForm").addEventListener("submit", function (e) {
+  e.preventDefault();
+  const username = document.getElementById("loginUsername").value.trim();
+  const password = document.getElementById("loginPassword").value;
+
+  const foundUser = users.find(u => u.username === username && u.password === password);
+  if (foundUser) {
+    currentUser = foundUser;
+    localStorage.setItem("jasa_current_user", JSON.stringify(currentUser));
+    applyUserPermissions();
+    document.getElementById("loginScreen").style.display = "none";
+    this.reset();
+  } else {
+    alert("Invalid username or password.");
+  }
+});
+
+function logoutUser() {
+  currentUser = null;
+  localStorage.removeItem("jasa_current_user");
+  document.getElementById("loginScreen").style.display = "flex";
+  location.reload();
+}
+
+// User Management Modal Actions (Admin only)
+function openUserModal() {
+  if (!currentUser || currentUser.role !== "admin") return;
+  renderUserList();
+  document.getElementById("userModal").style.display = "flex";
+}
+
+function closeUserModal() {
+  document.getElementById("userModal").style.display = "none";
+}
+
+document.getElementById("addUserForm").addEventListener("submit", function (e) {
+  e.preventDefault();
+  if (!currentUser || currentUser.role !== "admin") return;
+
+  const username = document.getElementById("newUsername").value.trim();
+  const password = document.getElementById("newPassword").value;
+  const role = document.getElementById("newUserRole").value;
+
+  if (users.some(u => u.username === username)) {
+    alert("Username already exists.");
+    return;
+  }
+
+  users.push({ username, password, role });
+  localStorage.setItem("jasa_users", JSON.stringify(users));
+  alert("User created successfully!");
+  this.reset();
+  renderUserList();
+});
+
+function renderUserList() {
+  const container = document.getElementById("userListContainer");
+  container.innerHTML = "";
+  users.forEach((u, idx) => {
+    container.innerHTML += `
+      <div style="display: flex; justify-content: space-between; align-items: center; padding: 6px; border-bottom: 1px solid #eee;">
+        <span><strong>${escapeHTML(u.username)}</strong> (${u.role})</span>
+        ${u.username !== "admin" ? `<button class="delete-btn" style="padding: 2px 6px; font-size: 11px;" onclick="deleteUser('${u.username}')">Delete</button>` : ""}
+      </div>
+    `;
+  });
+}
+
+function deleteUser(username) {
+  if (username === "admin") {
+    alert("Cannot delete primary admin.");
+    return;
+  }
+  if (!confirm(`Delete user ${username}?`)) return;
+  users = users.filter(u => u.username !== username);
+  localStorage.setItem("jasa_users", JSON.stringify(users));
+  renderUserList();
+}
+
+// Apply role-based visibility upon loading or login
+function applyUserPermissions() {
+  if (!currentUser) {
+    document.getElementById("loginScreen").style.display = "flex";
+    return;
+  }
+
+  document.getElementById("loginScreen").style.display = "none";
+  document.getElementById("userInfoDisplay").textContent = `User: ${currentUser.username} (${currentUser.role.toUpperCase()});`;
+
+  const tabDashboard = document.getElementById("tabDashboard");
+  const tabMonthly = document.getElementById("tabMonthly");
+  const manageUsersBtn = document.getElementById("manageUsersBtn");
+
+  if (currentUser.role === "employee") {
+    // Hide Dashboard & Monthly Summary tabs for employees[cite: 1]
+    if (tabDashboard) tabDashboard.style.display = "none";
+    if (tabMonthly) tabMonthly.style.display = "none";
+    if (manageUsersBtn) manageUsersBtn.style.display = "none";
+
+    // Default employee to Ledger view if active page is restricted
+    const activePage = document.querySelector(".page.active-page");
+    if (activePage && (activePage.id === "dashboard" || activePage.id === "monthly")) {
+      openPage("ledger", document.querySelector("button[onclick*='ledger']"));
+    }
+  } else if (currentUser.role === "admin") {
+    if (tabDashboard) tabDashboard.style.display = "";
+    if (tabMonthly) tabMonthly.style.display = "";
+    if (manageUsersBtn) manageUsersBtn.style.display = "";
+  }
+}
+
+// Run permission check on DOM load
+document.addEventListener("DOMContentLoaded", () => {
+  if (currentUser) {
+    applyUserPermissions();
+  } else {
+    document.getElementById("loginScreen").style.display = "flex";
+  }
+});
+
 function updateSalesValues() {
   const qty = Number(salesQuantityInput.value) || 0;
   const price = Number(salesPriceInput.value) || 0;
@@ -299,26 +429,42 @@ function renderLedger() {
   const count = document.getElementById("ledgerCount");
   const query = (document.getElementById("ledgerSearch")?.value || "").trim().toLowerCase();
 
+  const isEmployee = currentUser && currentUser.role === "employee";
+  const balanceHeader = document.getElementById("ledgerBalanceHeader");
+  if (balanceHeader) {
+    balanceHeader.style.display = isEmployee ? "none" : "";
+  }
+
+  // First sort chronologically to compute running balance accurately
+  ledgerRecords.sort((a, b) => new Date(a.date) - new Date(b.date));
+
+  // Compute running balance map or array
+  let runningBalance = 0;
+  const ledgerWithBalances = ledgerRecords.map((record) => {
+    if (record.type === "credit") {
+      runningBalance += Number(record.amount);
+    } else {
+      runningBalance -= Number(record.amount);
+    }
+    return { ...record, calculatedBalance: runningBalance };
+  });
+
   const filtered = query
-    ? ledgerRecords.filter((r) => (r.description || "").toLowerCase().includes(query))
-    : ledgerRecords;
+    ? ledgerWithBalances.filter((r) => (r.description || "").toLowerCase().includes(query))
+    : [...ledgerWithBalances];
+
+  // Now sort descending so latest date is on top for UI display
+  filtered.sort((a, b) => new Date(b.date) - new Date(a.date));
 
   table.innerHTML = "";
   count.textContent = `${filtered.length} record${filtered.length === 1 ? "" : "s"}`;
 
   if (filtered.length === 0) {
-    table.innerHTML = `<tr><td colspan="7" class="empty-row">No ledger records found.</td></tr>`;
+    table.innerHTML = `<tr><td colspan="${isEmployee ? 6 : 7}" class="empty-row">No ledger records found.</td></tr>`;
     return;
   }
 
-  let balance = 0;
-
   filtered.forEach((record, index) => {
-    if (record.type === "credit") {
-      balance += Number(record.amount);
-    } else {
-      balance -= Number(record.amount);
-    }
     table.innerHTML += `
       <tr>
         <td>${index + 1}</td>
@@ -326,7 +472,7 @@ function renderLedger() {
         <td>${escapeHTML(record.description)}</td>
         <td class="credit">${record.type === "credit" ? formatMoney(record.amount) : "-"}</td>
         <td class="debit">${record.type === "debit" ? formatMoney(record.amount) : "-"}</td>
-        <td>${formatMoney(balance)}</td>
+        ${isEmployee ? "" : `<td>${formatMoney(record.calculatedBalance)}</td>`}
         <td>
           <div class="action-buttons">
             <button class="edit-btn" onclick="editLedger('${record.id}')">Edit</button>
@@ -515,52 +661,54 @@ function cancelEditSale() {
   if (cancelBtn) cancelBtn.style.display = 'none';
 }
 
-function renderSales() {
-  const tableBody = document.getElementById("salesTable");
-  if (!tableBody) return;
-  tableBody.innerHTML = ""; // Clear previous rows
+function sortByLatestDate(a, b) {
+  const dateA = new Date(a.date || a.advanceDate || 0);
+  const dateB = new Date(b.date || b.advanceDate || 0);
+  return dateB - dateA; // Descending order (newest date first)
+}
 
+function renderSales() {
+  const table = document.getElementById("salesTable");
+  const count = document.getElementById("salesCount");
   const query = (document.getElementById("salesSearch")?.value || "").trim().toLowerCase();
 
   const filtered = query
     ? salesRecords.filter((r) => (r.description || "").toLowerCase().includes(query) || (r.invoice || "").toLowerCase().includes(query))
-    : salesRecords;
+    : [...salesRecords];
 
-  filtered.forEach((record, idx) => {
-    const amount = Number(record.amount || (record.quantity * record.price)) || 0;
-    const month = getMonthName(record.date);
+  filtered.sort(sortByLatestDate);
 
-    const tr = document.createElement("tr");
-    tr.innerHTML = `
-      <td>${idx + 1}</td>
-      <td>${formatDate(record.date)}</td>
-      <td>${escapeHTML(record.description)}</td>
+  table.innerHTML = "";
+  count.textContent = `${filtered.length} record${filtered.length === 1 ? "" : "s"}`;
+
+  if (filtered.length === 0) {
+    table.innerHTML = `<tr><td colspan="12" class="empty-row">No sales records found.</td></tr>`;
+    return;
+  }
+
+  filtered.forEach((record, index) => {
+    table.innerHTML += `
+      <tr>
+        <td>${index + 1}</td>
+        <td>${formatDate(record.date)}</td>
+        <td>${escapeHTML(record.description)}</td>
         <td>${escapeHTML(record.invoice || "-")}</td>
-      <td>${Number(record.quantity || 0).toFixed(2)}</td>
-      <td>${Number(record.price || 0).toFixed(2)}</td>
-      <td>${amount.toFixed(2)}</td>
-      <td>${formatMoney(Number(record.amountPaid || 0))}</td>
-      <td>${escapeHTML(record.paidBy || "-")}</td>
-      <td>${formatMoney(Number(record.balanceRemaining ?? amount - Number(record.amountPaid || 0)))}</td>
-      <td>${month}</td>
-      <td>
-        <div class="action-buttons">
-          <button class="edit-btn" onclick="editSale('${record.id}')">Edit</button>
-          <button class="receipt-btn" onclick="generateSalesReceipt('${record.id}')">Receipt</button>
-          <button class="delete-btn" onclick="deleteSale('${record.id}')">Delete</button>
-        </div>
-      </td>
+        <td>${formatNumber(record.quantity)}</td>
+        <td>${formatMoney(record.price)}</td>
+        <td>${formatMoney(record.amount)}</td>
+        <td>${formatMoney(record.amountPaid || 0)}</td>
+        <td>${escapeHTML(record.paidBy || "-")}</td>
+        <td>${formatMoney(record.balanceRemaining || 0)}</td>
+        <td>${escapeHTML(record.month || "-")}</td>
+        <td>
+          <div class="action-buttons">
+            <button class="edit-btn" onclick="editSale('${record.id}')">Edit</button>
+            <button class="delete-btn" onclick="deleteSale('${record.id}')">Delete</button>
+          </div>
+        </td>
+      </tr>
     `;
-
-    tableBody.appendChild(tr);
-
-    // Update record amount just in case
-    record.amount = amount;
   });
-
-  // Update sales count display
-  const salesCount = document.getElementById("salesCount");
-  if (salesCount) salesCount.textContent = `${filtered.length} record(s)`;
 }
 
 
@@ -648,14 +796,16 @@ function renderPurchases() {
   const query = (document.getElementById("purchaseSearch")?.value || "").trim().toLowerCase();
 
   const filtered = query
-    ? purchaseRecords.filter((r) => (r.description || "").toLowerCase().includes(query) || (r.receipt || "").toLowerCase().includes(query) || (r.type || "").toLowerCase().includes(query))
-    : purchaseRecords;
+    ? purchaseRecords.filter((r) => (r.description || "").toLowerCase().includes(query) || (r.receipt || "").toLowerCase().includes(query))
+    : [...purchaseRecords];
+
+  filtered.sort(sortByLatestDate);
 
   table.innerHTML = "";
   count.textContent = `${filtered.length} record${filtered.length === 1 ? "" : "s"}`;
 
   if (filtered.length === 0) {
-    table.innerHTML = `<tr><td colspan="10" class="empty-row">No purchase records found.</td></tr>`;
+    table.innerHTML = `<tr><td colspan="13" class="empty-row">No purchase records found.</td></tr>`;
     return;
   }
 
@@ -664,20 +814,19 @@ function renderPurchases() {
       <tr>
         <td>${index + 1}</td>
         <td>${formatDate(record.date)}</td>
-        <td>${escapeHTML(record.type || "Other")}</td>
+        <td>${escapeHTML(record.type)}</td>
         <td>${escapeHTML(record.description)}</td>
         <td>${escapeHTML(record.receipt || "-")}</td>
-        <td>${escapeHTML(record.boughtBy || "-")}</td>
+        <td>${escapeHTML(record.boughtBy)}</td>
         <td>${formatNumber(record.quantity)}</td>
         <td>${formatMoney(record.price)}</td>
-        <td class="debit">${formatMoney(record.amount)}</td>
-        <td>${formatMoney(Number(record.amountPaid || 0))}</td>
-        <td>${formatMoney(Number(record.balanceRemaining ?? (record.amount - Number(record.amountPaid || 0))))}</td>
-        <td>${getMonthName(record.date)}</td>
+        <td>${formatMoney(record.amount)}</td>
+        <td>${formatMoney(record.amountPaid || 0)}</td>
+        <td>${formatMoney(record.balanceRemaining || 0)}</td>
+        <td>${escapeHTML(record.month || "-")}</td>
         <td>
           <div class="action-buttons">
             <button class="edit-btn" onclick="editPurchase('${record.id}')">Edit</button>
-            <button class="receipt-btn" onclick="generatePurchaseReceipt('${record.id}')">Receipt</button>
             <button class="delete-btn" onclick="deletePurchase('${record.id}')">Delete</button>
           </div>
         </td>
@@ -1121,7 +1270,9 @@ function renderCostSales() {
 
   const filtered = query
     ? costSalesRecords.filter((r) => (r.description || "").toLowerCase().includes(query) || (r.reference || "").toLowerCase().includes(query))
-    : costSalesRecords;
+    : [...costSalesRecords];
+
+  filtered.sort(sortByLatestDate);
 
   table.innerHTML = "";
   count.textContent = `${filtered.length} record${filtered.length === 1 ? "" : "s"}`;
@@ -1140,8 +1291,8 @@ function renderCostSales() {
         <td>${escapeHTML(record.reference || "-")}</td>
         <td>${formatNumber(record.quantity)}</td>
         <td>${formatMoney(record.price)}</td>
-        <td class="debit">${formatMoney(record.amount)}</td>
-        <td>${getMonthName(record.date)}</td>
+        <td>${formatMoney(record.amount)}</td>
+        <td>${escapeHTML(record.month || "-")}</td>
         <td>
           <div class="action-buttons">
             <button class="edit-btn" onclick="editCostSale('${record.id}')">Edit</button>
@@ -1237,56 +1388,52 @@ document.getElementById("advanceForm").addEventListener("submit", function (even
 });
 
 // ------------------- ADVANCE RENDER -------------------
-function renderAdvance() {
-  const tableBody = document.getElementById("advanceTable");
-  if (!tableBody) return;
+function renderAdvances() {
+  const table = document.getElementById("advanceTable");
+  const count = document.getElementById("advanceCount");
   const query = (document.getElementById("advanceSearch")?.value || "").trim().toLowerCase();
 
   const filtered = query
     ? advanceRecords.filter((r) => (r.person || "").toLowerCase().includes(query) || (r.paymentMode || "").toLowerCase().includes(query))
-    : advanceRecords;
+    : [...advanceRecords];
 
-  tableBody.innerHTML = "";
+  filtered.sort(sortByLatestDate);
+
+  table.innerHTML = "";
+  count.textContent = `${filtered.length} record${filtered.length === 1 ? "" : "s"}`;
+
+  if (filtered.length === 0) {
+    table.innerHTML = `<tr><td colspan="15" class="empty-row">No advance records found.</td></tr>`;
+    return;
+  }
 
   filtered.forEach((record, index) => {
-    const amountReceived = Number(record.estimatedPrice || 0) * Number(record.estimatedKg || 0);
-    const amountRecovered = Number(record.netWeight || 0) * Number(record.price || 0);
-    const excessDelivery = amountReceived - amountRecovered;
-
-    const tr = document.createElement("tr");
-    tr.innerHTML = `
-      <td>${index + 1}</td>
-      <td>${formatDate(record.advanceDate)}</td>
-      <td>${record.person}</td>
-      <td>${record.paymentMode}</td>
-      <td>${record.estimatedPrice.toFixed(2)}</td>
-      <td>${record.estimatedKg.toFixed(2)}</td>
-      <td>${amountReceived.toFixed(2)}</td>
-      <td>${formatDate(record.recoveryDate)}</td>
-      <td>${record.recoveryType}</td>
-      <td>${record.grossWeight.toFixed(2)}</td>
-      <td>${record.netWeight.toFixed(2)}</td>
-      <td>${record.price.toFixed(2)}</td>
-      <td>${amountRecovered.toFixed(2)}</td>
-      <td>${excessDelivery.toFixed(2)}</td>
-      <td>
-        <div class="action-buttons">
-          <button class="edit-btn" onclick="editAdvance('${record.id}')">Edit</button>
-          <button class="delete-btn" onclick="deleteAdvance('${record.id}')">Delete</button>
-        </div>
-      </td>
+    table.innerHTML += `
+      <tr>
+        <td>${index + 1}</td>
+        <td>${formatDate(record.advanceDate)}</td>
+        <td>${escapeHTML(record.person)}</td>
+        <td>${escapeHTML(record.paymentMode)}</td>
+        <td>${formatMoney(record.estimatedPrice)}</td>
+        <td>${formatNumber(record.estimatedKg)}</td>
+        <td>${formatMoney(record.amountReceived)}</td>
+        <td>${formatDate(record.recoveryDate)}</td>
+        <td>${escapeHTML(record.recoveryType)}</td>
+        <td>${formatNumber(record.grossWeight)}</td>
+        <td>${formatNumber(record.netWeight)}</td>
+        <td>${formatMoney(record.price)}</td>
+        <td>${formatMoney(record.amountRecovered)}</td>
+        <td>${formatNumber(record.excessDelivery)}</td>
+        <td>
+          <div class="action-buttons">
+            <button class="edit-btn" onclick="editAdvance('${record.id}')">Edit</button>
+            <button class="delete-btn" onclick="deleteAdvance('${record.id}')">Delete</button>
+          </div>
+        </td>
+      </tr>
     `;
-    tableBody.appendChild(tr);
-
-    // Update record with calculated fields
-    record.amountReceived = amountReceived;
-    record.amountRecovered = amountRecovered;
-    record.excessDelivery = excessDelivery;
   });
-  const advanceCount = document.getElementById("advanceCount");
-  if (advanceCount) advanceCount.textContent = `${filtered.length} record(s)`;
 }
-
 function deleteAdvance(id) {
   if (!confirm("Delete this advance record?")) return;
 

@@ -16,7 +16,114 @@
 * {
   box-sizing: border-box;
 }
+/* =========================================
+   FIXED MODERN PROFESSIONAL LOGIN STYLING
+   ========================================= */
 
+#loginScreen {
+  position: fixed;
+  top: 0; 
+  left: 0; 
+  width: 100%; 
+  height: 100%;
+  background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 9999;
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+}
+
+#loginScreen .login-card {
+  background: #ffffff;
+  padding: 40px 30px;
+  border-radius: 16px;
+  width: 100%;
+  max-width: 400px;
+  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.3), 0 10px 10px -5px rgba(0, 0, 0, 0.2);
+  text-align: center;
+  animation: fadeIn 0.4s ease-out;
+  box-sizing: border-box;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(-15px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+#loginScreen .login-card h2 { 
+  color: #1e293b; 
+  margin: 0 0 8px 0; 
+  font-size: 24px;
+  font-weight: 700;
+}
+
+#loginScreen .login-subtitle {
+  color: #64748b;
+  font-size: 14px;
+  margin: 0 0 24px 0;
+}
+
+#loginScreen .login-card .form-group {
+  text-align: left;
+  margin-bottom: 18px;
+}
+
+#loginScreen .login-card label {
+  display: block;
+  font-size: 13px;
+  font-weight: 600;
+  color: #475569;
+  margin-bottom: 6px;
+}
+
+/* Explicitly override global input styles inside login */
+#loginScreen .login-card input {
+  width: 100% !important;
+  min-height: auto !important;
+  padding: 12px 14px !important;
+  border: 1px solid #cbd5e1 !important;
+  border-radius: 8px !important;
+  font-size: 14px !important;
+  background: #ffffff !important;
+  color: #1e293b !important;
+  outline: none;
+  transition: border-color 0.2s, box-shadow 0.2s;
+  box-sizing: border-box;
+}
+
+#loginScreen .login-card input:focus {
+  border-color: #3b82f6 !important;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.15) !important;
+  outline: none;
+}
+
+/* Explicitly override global button styles inside login */
+#loginScreen .login-btn {
+  width: 100% !important;
+  min-height: auto !important;
+  padding: 12px !important;
+  background: #2563eb !important;
+  color: white !important;
+  border: none !important;
+  border-radius: 8px !important;
+  font-size: 15px !important;
+  font-weight: 600 !important;
+  cursor: pointer;
+  transition: background 0.2s;
+  margin-top: 10px;
+}
+
+#loginScreen .login-btn:hover {
+  background: #1d4ed8 !important;
+  transform: none !important;
+}
+
+#loginScreen .login-footer-text {
+  margin-top: 20px;
+  font-size: 12px;
+  color: #94a3b8;
+}
 body {
   margin: 0;
   font-family: Arial, Helvetica, sans-serif;
