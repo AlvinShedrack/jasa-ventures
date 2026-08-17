@@ -24,8 +24,12 @@ const salesBalanceInput = document.getElementById("salesBalanceRemaining");
 /* =========================
    USER AUTHENTICATION & ROLES
 ========================= */
+/* =========================
+   USER AUTHENTICATION & ROLES
+========================= */
 let users = JSON.parse(localStorage.getItem("jasa_users")) || [
-  { username: "admin", password: "admin", role: "admin" }
+  { username: "admin@jasa.com", password: "admin2026", role: "admin" },
+  { username: "employee@jasa.com", password: "emp_2026", role: "employee" }
 ];
 let currentUser = JSON.parse(localStorage.getItem("jasa_current_user")) || null;
 
@@ -92,14 +96,14 @@ function renderUserList() {
     container.innerHTML += `
       <div style="display: flex; justify-content: space-between; align-items: center; padding: 6px; border-bottom: 1px solid #eee;">
         <span><strong>${escapeHTML(u.username)}</strong> (${u.role})</span>
-        ${u.username !== "admin" ? `<button class="delete-btn" style="padding: 2px 6px; font-size: 11px;" onclick="deleteUser('${u.username}')">Delete</button>` : ""}
+        ${u.username !== "admin@jasa.com" ? `<button class="delete-btn" style="padding: 2px 6px; font-size: 11px;" onclick="deleteUser('${u.username}')">Delete</button>` : ""}
       </div>
     `;
   });
 }
 
 function deleteUser(username) {
-  if (username === "admin") {
+  if (username === "admin@jasa.com") {
     alert("Cannot delete primary admin.");
     return;
   }
