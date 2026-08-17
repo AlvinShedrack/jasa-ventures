@@ -57,7 +57,7 @@ function logoutUser() {
 // User Management Modal Actions (Admin only)
 function openUserModal() {
   if (!currentUser || currentUser.role !== "admin") return;
-  renderUserList();
+  renderUsers();
   document.getElementById("userModal").style.display = "flex";
 }
 
@@ -82,20 +82,25 @@ document.getElementById("addUserForm").addEventListener("submit", function (e) {
   localStorage.setItem("jasa_users", JSON.stringify(users));
   alert("User created successfully!");
   this.reset();
-  renderUserList();
+  renderUsers();
 });
 
-function renderUserList() {
-  const container = document.getElementById("userListContainer");
-  container.innerHTML = "";
-  users.forEach((u, idx) => {
-    container.innerHTML += `
-      <div style="display: flex; justify-content: space-between; align-items: center; padding: 6px; border-bottom: 1px solid #eee;">
-        <span><strong>${escapeHTML(u.username)}</strong> (${u.role})</span>
-        ${u.username !== "admin" ? `<button class="delete-btn" style="padding: 2px 6px; font-size: 11px;" onclick="deleteUser('${u.username}')">Delete</button>` : ""}
-      </div>
-    `;
-  });
+function renderUsers() {
+  const tbody = document.getElementById('userTableBody'); 
+  if (!tbody) return;
+
+  let users = JSON.parse(localStorage.getItem('users')) || [];
+  
+  tbody.innerHTML = users.map(user => `
+    <tr>
+      <td>${user.username}</td>
+      <td>${user.role || 'User'}</td>
+      <td>
+        <button class="btn-edit" onclick="openEditUserModal('${user.username}')">Edit</button>
+        <button class="btn-delete" onclick="deleteUser('${user.username}')" style="margin-left: 6px;">Delete</button>
+      </td>
+    </tr>
+  `).join('');
 }
 
 function deleteUser(username) {
@@ -106,7 +111,7 @@ function deleteUser(username) {
   if (!confirm(`Delete user ${username}?`)) return;
   users = users.filter(u => u.username !== username);
   localStorage.setItem("jasa_users", JSON.stringify(users));
-  renderUserList();
+  renderUsers();
 }
 
 // Apply role-based visibility upon loading or login
@@ -149,7 +154,61 @@ document.addEventListener("DOMContentLoaded", () => {
     document.getElementById("loginScreen").style.display = "flex";
   }
 });
+// Open modal and populate data
+function openEditUserModal(username) {
+  let users = JSON.parse(localStorage.getItem('users')) || [];
+  let user = users.find(u => u.username === username);
 
+  if (!user) {
+    alert("User not found!");
+    return;
+  }
+
+  document.getElementById('editUserOriginalUsername').value = user.username;
+  document.getElementById('editUsername').value = user.username;
+  document.getElementById('editPassword').value = "";
+
+  document.getElementById('editUserModal').style.display = 'block';
+}
+
+function closeEditUserModal() {
+  document.getElementById('editUserModal').style.display = 'none';
+}
+
+// Save edits
+function saveUserEdit(event) {
+  event.preventDefault();
+
+  const originalUsername = document.getElementById('editUserOriginalUsername').value;
+  const newUsername = document.getElementById('editUsername').value.trim();
+  const newPassword = document.getElementById('editPassword').value;
+
+  let users = JSON.parse(localStorage.getItem('users')) || [];
+  let userIndex = users.findIndex(u => u.username === originalUsername);
+
+  if (userIndex === -1) {
+    alert("Error: User record not found.");
+    return;
+  }
+
+  if (newUsername !== originalUsername && users.some(u => u.username === newUsername)) {
+    alert("Username is already taken!");
+    return;
+  }
+
+  users[userIndex].username = newUsername;
+  if (newPassword) {
+    users[userIndex].password = newPassword;
+  }
+
+  localStorage.setItem('users', JSON.stringify(users));
+  alert("User updated successfully!");
+  closeEditUserModal();
+
+  if (typeof renderUsers === 'function') {
+    renderUsers();
+  }
+}
 function updateSalesValues() {
   const qty = Number(salesQuantityInput.value) || 0;
   const price = Number(salesPriceInput.value) || 0;
