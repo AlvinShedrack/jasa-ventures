@@ -28,8 +28,8 @@ const salesBalanceInput = document.getElementById("salesBalanceRemaining");
    USER AUTHENTICATION & ROLES
 ========================= */
 let users = JSON.parse(localStorage.getItem("jasa_users")) || [
-  { username: "admin@jasa.com", password: "admin2026", role: "admin" },
-  { username: "employee@jasa.com", password: "emp_2026", role: "employee" }
+  { username: "woniala@jasa.com", password: "woniala2026", role: "admin" },
+  { username: "employee@jasa.com", password: "employee2026", role: "employee" }
 ];
 let currentUser = JSON.parse(localStorage.getItem("jasa_current_user")) || null;
 
