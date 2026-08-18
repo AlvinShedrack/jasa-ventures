@@ -745,3 +745,16 @@ tbody tr:nth-child(even) {
     text-align: left;
   }
 }
+/* Date group row highlighting for ledger table */
+#ledgerTable tr.date-group-0 {
+  background-color: #ffffff;
+}
+
+#ledgerTable tr.date-group-1 {
+  background-color: var(--soft-bg); /* #edf5ff */
+}
+
+/* Optional: Subtle hover effect on rows */
+#ledgerTable tr:hover {
+  background-color: #e2eeff !important;
+}

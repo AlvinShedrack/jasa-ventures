@@ -498,26 +498,36 @@ function renderLedger() {
     balanceHeader.style.display = isEmployee ? "none" : "";
   }
 
-  // First sort chronologically to compute running balance accurately
-  ledgerRecords.sort((a, b) => new Date(a.date) - new Date(b.date));
+  // 1. Copy array before sorting to avoid mutating global ledgerRecords
+  const sortedRecords = [...ledgerRecords].sort((a, b) => {
+    const timeDiff = new Date(a.date) - new Date(b.date);
+    if (timeDiff !== 0) return timeDiff;
+    return (a._updatedAt || 0) - (b._updatedAt || 0);
+  });
 
-  // Compute running balance map or array
+  // 2. Compute chronological running balance
   let runningBalance = 0;
-  const ledgerWithBalances = ledgerRecords.map((record) => {
+  const ledgerWithBalances = sortedRecords.map((record) => {
+    const amt = Number(record.amount) || 0;
     if (record.type === "credit") {
-      runningBalance += Number(record.amount);
-    } else {
-      runningBalance -= Number(record.amount);
+      runningBalance += amt;
+    } else if (record.type === "debit") {
+      runningBalance -= amt;
     }
     return { ...record, calculatedBalance: runningBalance };
   });
 
+  // 3. Apply search filter
   const filtered = query
     ? ledgerWithBalances.filter((r) => (r.description || "").toLowerCase().includes(query))
     : [...ledgerWithBalances];
 
-  // Now sort descending so latest date is on top for UI display
-  filtered.sort((a, b) => new Date(b.date) - new Date(a.date));
+  // 4. Sort descending (newest on top) for table display
+  filtered.sort((a, b) => {
+    const timeDiff = new Date(b.date) - new Date(a.date);
+    if (timeDiff !== 0) return timeDiff;
+    return (b._updatedAt || 0) - (a._updatedAt || 0);
+  });
 
   table.innerHTML = "";
   count.textContent = `${filtered.length} record${filtered.length === 1 ? "" : "s"}`;
@@ -527,9 +537,22 @@ function renderLedger() {
     return;
   }
 
+  // 5. Render rows with date-group color toggling
+  let currentDate = null;
+  let groupIndex = 0;
+
   filtered.forEach((record, index) => {
+    // Normalize date string (YYYY-MM-DD or raw date string)
+    const recordDateKey = record.date ? String(record.date).split("T")[0] : "";
+
+    // Switch group color when a new date is encountered
+    if (currentDate !== null && recordDateKey !== currentDate) {
+      groupIndex = (groupIndex + 1) % 2;
+    }
+    currentDate = recordDateKey;
+
     table.innerHTML += `
-      <tr>
+      <tr class="date-group-${groupIndex}">
         <td>${index + 1}</td>
         <td>${formatDate(record.date)}</td>
         <td>${escapeHTML(record.description)}</td>
@@ -546,7 +569,6 @@ function renderLedger() {
     `;
   });
 }
-
 function deleteLedger(id) {
   if (!confirm("Delete this ledger record?")) return;
 
@@ -2988,38 +3010,37 @@ function clearAllRecords() {
 }
 
 function getTotals() {
-  const sales = sumRecords(salesRecords);
-  const purchases = sumRecords(purchaseRecords);
-  const costSales = sumRecords(costSalesRecords);
-  const advances = sumRecords(advanceRecords);
-  const grossProfit = - costSales - purchases + sales;
+  const sales = salesRecords.reduce((sum, r) => sum + (Number(r.amount) || 0), 0);
+  const purchases = purchaseRecords.reduce((sum, r) => sum + (Number(r.amount) || 0), 0);
+  const costSales = costSalesRecords.reduce((sum, r) => sum + (Number(r.amount) || 0), 0);
+  const advances = advanceRecords.reduce((sum, r) => sum + (Number(r.amount) || 0), 0);
 
-  const credit = ledgerRecords
-    .filter((record) => record.type === "credit")
-    .reduce((sum, record) => sum + Number(record.amount), 0);
+  let credit = 0;
+  let debit = 0;
 
-  const debit = ledgerRecords
-    .filter((record) => record.type === "debit")
-    .reduce((sum, record) => sum + Number(record.amount), 0);
+  ledgerRecords.forEach((record) => {
+    const amt = Number(record.amount) || 0;
+    if (record.type === "credit") {
+      credit += amt;
+    } else if (record.type === "debit") {
+      debit += amt;
+    }
+  });
 
+  // Maintained identical convention as ledger running balance (Credit - Debit)
   const balance = credit - debit;
-
-  const records =
-    ledgerRecords.length +
-    salesRecords.length +
-    purchaseRecords.length +
-    costSalesRecords.length +
-    advanceRecords.length;
+  const grossProfit = sales - (purchases + costSales);
+  const records = salesRecords.length + purchaseRecords.length + costSalesRecords.length + ledgerRecords.length + advanceRecords.length;
 
   return {
     sales,
     purchases,
     costSales,
     advances,
-    grossProfit,
     credit,
     debit,
     balance,
+    grossProfit,
     records
   };
 }
