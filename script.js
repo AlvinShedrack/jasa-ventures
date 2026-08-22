@@ -1,4 +1,4 @@
-﻿let ledgerRecords = JSON.parse(localStorage.getItem("jasa_ledger_records")) || [];
+let ledgerRecords = JSON.parse(localStorage.getItem("jasa_ledger_records")) || [];
 let salesRecords = JSON.parse(localStorage.getItem("jasa_sales_records")) || [];
 let purchaseRecords = JSON.parse(localStorage.getItem("jasa_purchase_records")) || [];
 let costSalesRecords = JSON.parse(localStorage.getItem("jasa_cost_sales_records")) || [];
@@ -275,6 +275,10 @@ let syncBooting = true;
 let syncInProgress = false;
 let syncTimer = null;
 
+// Large-dataset UI controls
+const LEDGER_PAGE_SIZE = 100;
+let ledgerCurrentPage = 1;
+
 const supabaseClient =
   window.supabase && SUPABASE_URL && SUPABASE_ANON_KEY
     ? window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY)
@@ -338,21 +342,13 @@ function attachFormulaListeners() {
   });
 }
 // Stub for manual sync button click
-function manualSyncToSupabase() {
-  if (typeof syncWithSupabase === 'function') {
-    syncWithSupabase();
-  } else {
-    console.warn('Supabase sync logic not implemented yet.');
-  }
+function manualSyncToSupabaseLegacyStub() {
+  // Legacy stub retained only for compatibility; real sync function is defined later.
 }
 
 // Stub for queued background sync
-function queueSupabaseSync(delay = 1000) {
-  setTimeout(() => {
-    if (typeof syncWithSupabase === 'function' && navigator.onLine) {
-      syncWithSupabase();
-    }
-  }, delay);
+function queueSupabaseSyncLegacyStub(delay = 1000) {
+  // Legacy stub retained only for compatibility; real sync function is defined later.
 }
 function updatePurchaseAmount() {
   const quantity = Number(document.getElementById("purchaseQuantity").value || 0);
@@ -490,84 +486,91 @@ document.getElementById("ledgerForm").addEventListener("submit", function (event
 function renderLedger() {
   const table = document.getElementById("ledgerTable");
   const count = document.getElementById("ledgerCount");
-  const query = (document.getElementById("ledgerSearch")?.value || "").trim().toLowerCase();
+  if (!table || !count) return;
 
+  const query = (document.getElementById("ledgerSearch")?.value || "").trim().toLowerCase();
   const isEmployee = currentUser && currentUser.role === "employee";
   const balanceHeader = document.getElementById("ledgerBalanceHeader");
-  if (balanceHeader) {
-    balanceHeader.style.display = isEmployee ? "none" : "";
-  }
+  if (balanceHeader) balanceHeader.style.display = isEmployee ? "none" : "";
 
-  // 1. Copy array before sorting to avoid mutating global ledgerRecords
   const sortedRecords = [...ledgerRecords].sort((a, b) => {
     const timeDiff = new Date(a.date) - new Date(b.date);
     if (timeDiff !== 0) return timeDiff;
     return (a._updatedAt || 0) - (b._updatedAt || 0);
   });
 
-  // 2. Compute chronological running balance
   let runningBalance = 0;
   const ledgerWithBalances = sortedRecords.map((record) => {
     const amt = Number(record.amount) || 0;
-    if (record.type === "credit") {
-      runningBalance += amt;
-    } else if (record.type === "debit") {
-      runningBalance -= amt;
-    }
+    if (record.type === "credit") runningBalance += amt;
+    else if (record.type === "debit") runningBalance -= amt;
     return { ...record, calculatedBalance: runningBalance };
   });
 
-  // 3. Apply search filter
   const filtered = query
     ? ledgerWithBalances.filter((r) => (r.description || "").toLowerCase().includes(query))
-    : [...ledgerWithBalances];
+    : ledgerWithBalances;
 
-  // 4. Sort descending (newest on top) for table display
   filtered.sort((a, b) => {
     const timeDiff = new Date(b.date) - new Date(a.date);
     if (timeDiff !== 0) return timeDiff;
     return (b._updatedAt || 0) - (a._updatedAt || 0);
   });
 
-  table.innerHTML = "";
   count.textContent = `${filtered.length} record${filtered.length === 1 ? "" : "s"}`;
+
+  let controls = document.getElementById("ledgerPagination");
+  if (!controls) {
+    const wrapper = table.closest(".table-wrapper");
+    if (wrapper) {
+      controls = document.createElement("div");
+      controls.id = "ledgerPagination";
+      controls.style.cssText = "display:flex;align-items:center;justify-content:center;gap:10px;flex-wrap:wrap;padding:12px 4px;font-size:13px;";
+      controls.innerHTML = `<button type="button" id="ledgerPrevPage" class="secondary-btn">Previous</button><span id="ledgerPageInfo"></span><button type="button" id="ledgerNextPage" class="secondary-btn">Next</button>`;
+      wrapper.insertAdjacentElement("afterend", controls);
+      document.getElementById("ledgerPrevPage")?.addEventListener("click", () => { if (ledgerCurrentPage > 1) { ledgerCurrentPage--; renderLedger(); } });
+      document.getElementById("ledgerNextPage")?.addEventListener("click", () => { ledgerCurrentPage++; renderLedger(); });
+    }
+  }
 
   if (filtered.length === 0) {
     table.innerHTML = `<tr><td colspan="${isEmployee ? 6 : 7}" class="empty-row">No ledger records found.</td></tr>`;
+    ledgerCurrentPage = 1;
+    if (controls) controls.style.display = "none";
     return;
   }
 
-  // 5. Render rows with date-group color toggling
+  const totalPages = Math.max(1, Math.ceil(filtered.length / LEDGER_PAGE_SIZE));
+  ledgerCurrentPage = Math.min(Math.max(1, ledgerCurrentPage), totalPages);
+  const startIndex = (ledgerCurrentPage - 1) * LEDGER_PAGE_SIZE;
+  const pageRecords = filtered.slice(startIndex, startIndex + LEDGER_PAGE_SIZE);
+
   let currentDate = null;
   let groupIndex = 0;
-
-  filtered.forEach((record, index) => {
-    // Normalize date string (YYYY-MM-DD or raw date string)
+  const rows = pageRecords.map((record, pageIndex) => {
     const recordDateKey = record.date ? String(record.date).split("T")[0] : "";
-
-    // Switch group color when a new date is encountered
-    if (currentDate !== null && recordDateKey !== currentDate) {
-      groupIndex = (groupIndex + 1) % 2;
-    }
+    if (currentDate !== null && recordDateKey !== currentDate) groupIndex = (groupIndex + 1) % 2;
     currentDate = recordDateKey;
-
-    table.innerHTML += `
-      <tr class="date-group-${groupIndex}">
-        <td>${index + 1}</td>
-        <td>${formatDate(record.date)}</td>
-        <td>${escapeHTML(record.description)}</td>
-        <td class="credit">${record.type === "credit" ? formatMoney(record.amount) : "-"}</td>
-        <td class="debit">${record.type === "debit" ? formatMoney(record.amount) : "-"}</td>
-        ${isEmployee ? "" : `<td>${formatMoney(record.calculatedBalance)}</td>`}
-        <td>
-          <div class="action-buttons">
-            <button class="edit-btn" onclick="editLedger('${record.id}')">Edit</button>
-            <button class="delete-btn" onclick="deleteLedger('${record.id}')">Delete</button>
-          </div>
-        </td>
-      </tr>
-    `;
+    return `<tr class="date-group-${groupIndex}">
+      <td>${startIndex + pageIndex + 1}</td>
+      <td>${formatDate(record.date)}</td>
+      <td>${escapeHTML(record.description)}</td>
+      <td class="credit">${record.type === "credit" ? formatMoney(record.amount) : "-"}</td>
+      <td class="debit">${record.type === "debit" ? formatMoney(record.amount) : "-"}</td>
+      ${isEmployee ? "" : `<td>${formatMoney(record.calculatedBalance)}</td>`}
+      <td><div class="action-buttons"><button class="edit-btn" onclick="editLedger('${record.id}')">Edit</button><button class="delete-btn" onclick="deleteLedger('${record.id}')">Delete</button></div></td>
+    </tr>`;
   });
+
+  table.innerHTML = rows.join("");
+
+  if (controls) controls.style.display = filtered.length > LEDGER_PAGE_SIZE ? "flex" : "none";
+  const info = document.getElementById("ledgerPageInfo");
+  if (info) info.textContent = `Page ${ledgerCurrentPage} of ${totalPages} • Showing ${startIndex + 1}-${Math.min(startIndex + LEDGER_PAGE_SIZE, filtered.length)} of ${filtered.length}`;
+  const prev = document.getElementById("ledgerPrevPage");
+  const next = document.getElementById("ledgerNextPage");
+  if (prev) prev.disabled = ledgerCurrentPage <= 1;
+  if (next) next.disabled = ledgerCurrentPage >= totalPages;
 }
 function deleteLedger(id) {
   if (!confirm("Delete this ledger record?")) return;
@@ -652,6 +655,7 @@ function clearLedgerSearch() {
   const el = document.getElementById("ledgerSearch");
   if (el) {
     el.value = "";
+    ledgerCurrentPage = 1;
     renderLedger();
   }
 }
@@ -694,11 +698,11 @@ if (_salesSearchEl) {
 // ledger search
 const _ledgerSearchEl = document.getElementById("ledgerSearch");
 if (_ledgerSearchEl) {
-  _ledgerSearchEl.addEventListener("input", () => renderLedger());
+  _ledgerSearchEl.addEventListener("input", () => { ledgerCurrentPage = 1; renderLedger(); });
 } else {
   document.addEventListener("DOMContentLoaded", () => {
     const s = document.getElementById("ledgerSearch");
-    if (s) s.addEventListener("input", () => renderLedger());
+    if (s) s.addEventListener("input", () => { ledgerCurrentPage = 1; renderLedger(); });
   });
 }
 
@@ -2357,35 +2361,36 @@ function triggerImport() {
 
 function importAndMergeData(event) {
   const file = event.target.files[0];
-
   if (!file) return;
-
   const reader = new FileReader();
-
+  setSyncStatus("Reading import file...", "normal");
   reader.onload = function (e) {
     try {
       const data = JSON.parse(e.target.result);
-
-      if (!confirm("Import and merge this data with existing records?")) {
-        return;
-      }
-
-      ledgerRecords = mergeRecords(ledgerRecords, data.ledgerRecords || []);
-      salesRecords = mergeRecords(salesRecords, data.salesRecords || []);
-      purchaseRecords = mergeRecords(purchaseRecords, data.purchaseRecords || []);
-      costSalesRecords = mergeRecords(costSalesRecords, data.costSalesRecords || []);
-      advanceRecords = mergeRecords(advanceRecords, data.advanceRecords || []);
-
-      saveAll();
-      renderAll();
-
-      alert("Data imported and merged successfully.");
+      if (!confirm("Import and merge this data with existing records?")) { setSyncStatus("Import cancelled", "normal"); return; }
+      setSyncStatus("Importing records locally...", "normal");
+      setTimeout(() => {
+        try {
+          ledgerRecords = mergeRecords(ledgerRecords, data.ledgerRecords || []);
+          salesRecords = mergeRecords(salesRecords, data.salesRecords || []);
+          purchaseRecords = mergeRecords(purchaseRecords, data.purchaseRecords || []);
+          costSalesRecords = mergeRecords(costSalesRecords, data.costSalesRecords || []);
+          advanceRecords = mergeRecords(advanceRecords, data.advanceRecords || []);
+          saveAll({ markDirty: true, schedule: false });
+          ledgerCurrentPage = 1;
+          renderAll();
+          const importedCount = (data.ledgerRecords || []).length + (data.salesRecords || []).length + (data.purchaseRecords || []).length + (data.costSalesRecords || []).length + (data.advanceRecords || []).length;
+          setSyncStatus("Import complete - click Sync when ready", "success");
+          alert(`${importedCount.toLocaleString()} records imported successfully.\n\nSaved on this device. Click Sync when ready to send them to Supabase.`);
+        } catch (error) {
+          console.error(error); setSyncStatus("Import failed", "error"); alert("Import failed: " + (error.message || "Unknown error"));
+        }
+      }, 30);
     } catch (error) {
-      alert("Invalid backup file. Please upload a valid Jasa Ventures JSON backup.");
-      console.error(error);
+      setSyncStatus("Invalid import file", "error"); alert("Invalid backup file. Please upload a valid Jasa Ventures JSON backup."); console.error(error);
     }
   };
-
+  reader.onerror = function () { setSyncStatus("Could not read import file", "error"); alert("The selected JSON file could not be read."); };
   reader.readAsText(file);
 }
 
@@ -2402,28 +2407,30 @@ function triggerImportReplace() {
 function importAndReplaceData(event) {
   const file = event.target.files[0];
   if (!file) return;
-
   const reader = new FileReader();
+  setSyncStatus("Reading replacement file...", "normal");
   reader.onload = function (e) {
     try {
       const data = JSON.parse(e.target.result);
-
-      if (!confirm("This will replace ALL current app data with the backup file. Proceed?")) return;
-
-      ledgerRecords = Array.isArray(data.ledgerRecords) ? data.ledgerRecords : [];
-      salesRecords = Array.isArray(data.salesRecords) ? data.salesRecords : [];
-      purchaseRecords = Array.isArray(data.purchaseRecords) ? data.purchaseRecords : [];
-      costSalesRecords = Array.isArray(data.costSalesRecords) ? data.costSalesRecords : [];
-      advanceRecords = Array.isArray(data.advanceRecords) ? data.advanceRecords : [];
-
-      saveAll();
-      renderAll();
-      alert("Data imported and replaced successfully.");
-    } catch (err) {
-      alert("Invalid backup file. Please upload a valid Jasa Ventures JSON backup.");
-      console.error(err);
-    }
+      if (!confirm("This will replace ALL current app data with the backup file. Proceed?")) { setSyncStatus("Import cancelled", "normal"); return; }
+      setSyncStatus("Replacing local records...", "normal");
+      setTimeout(() => {
+        try {
+          ledgerRecords = Array.isArray(data.ledgerRecords) ? data.ledgerRecords : [];
+          salesRecords = Array.isArray(data.salesRecords) ? data.salesRecords : [];
+          purchaseRecords = Array.isArray(data.purchaseRecords) ? data.purchaseRecords : [];
+          costSalesRecords = Array.isArray(data.costSalesRecords) ? data.costSalesRecords : [];
+          advanceRecords = Array.isArray(data.advanceRecords) ? data.advanceRecords : [];
+          saveAll({ markDirty: true, schedule: false });
+          ledgerCurrentPage = 1;
+          renderAll();
+          setSyncStatus("Import complete - click Sync when ready", "success");
+          alert("Data replaced successfully on this device. Click Sync when ready to update Supabase.");
+        } catch (err) { console.error(err); setSyncStatus("Import failed", "error"); alert("Import failed: " + (err.message || "Unknown error")); }
+      }, 30);
+    } catch (err) { setSyncStatus("Invalid import file", "error"); alert("Invalid backup file. Please upload a valid Jasa Ventures JSON backup."); console.error(err); }
   };
+  reader.onerror = function () { setSyncStatus("Could not read import file", "error"); alert("The selected JSON file could not be read."); };
   reader.readAsText(file);
 }
 
@@ -3278,8 +3285,6 @@ async function manualSyncToSupabase() {
 
 window.manualSyncToSupabase = manualSyncToSupabase;
 
-window.manualSyncToSupabase = manualSyncToSupabase;
-
 async function syncWithSupabase(options = {}) {
   const manual = options.manual || false;
 
@@ -3307,7 +3312,7 @@ async function syncWithSupabase(options = {}) {
 
   syncInProgress = true;
   if (syncBtn) syncBtn.disabled = true;
-  setSyncStatus("Downloading from Supabase...", "normal");
+  setSyncStatus("Sync 1/4: downloading cloud data...", "normal");
 
   try {
     const localBundle = getLocalBundle();
@@ -3372,14 +3377,17 @@ async function syncWithSupabase(options = {}) {
       STEP 3: Save merged data to this device first
       This is what makes the second device show the Supabase records.
     */
-    setSyncStatus("Saving downloaded records...", "normal");
+    setSyncStatus("Sync 2/4: preparing merged records...", "normal");
+    await new Promise((resolve) => setTimeout(resolve, 30));
+    setSyncStatus("Sync 3/4: saving records on this device...", "normal");
     applyBundleToLocal(mergedBundle, mergedUpdatedAt);
+    await new Promise((resolve) => setTimeout(resolve, 30));
 
     /*
       STEP 4: Upload the merged result back to Supabase
       This completes the 2-way sync.
     */
-    setSyncStatus("Uploading merged records...", "normal");
+    setSyncStatus("Sync 4/4: uploading to Supabase...", "normal");
 
     const { error: pushError } = await supabaseClient
       .from(SUPABASE_SYNC_TABLE)
@@ -3396,7 +3404,7 @@ async function syncWithSupabase(options = {}) {
     if (pushError) throw pushError;
 
     localStorage.setItem("jasa_last_synced", String(Date.now()));
-    setSyncStatus("2-way sync complete", "success");
+    setSyncStatus("Sync complete", "success");
   } catch (error) {
     console.error("Supabase 2-way sync failed:", error);
     setSyncStatus("Sync failed", "error");
