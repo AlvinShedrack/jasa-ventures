@@ -1,4 +1,6 @@
 
+
+
 let ledgerRecords = JSON.parse(localStorage.getItem("jasa_ledger_records")) || [];
 let salesRecords = JSON.parse(localStorage.getItem("jasa_sales_records")) || [];
 let purchaseRecords = JSON.parse(localStorage.getItem("jasa_purchase_records")) || [];
@@ -17,23 +19,6 @@ let editingRecord = {
 const salesQuantityInput = document.getElementById("salesQuantity");
 const salesPriceInput = document.getElementById("salesPrice");
 const salesAmountInput = document.getElementById("salesAmount");
-document.getElementById("loginForm").addEventListener("submit", function (e) {
-  e.preventDefault();
-  const username = document.getElementById("loginUsername").value.trim();
-  const password = document.getElementById("loginPassword").value;
-
-  const foundUser = users.find(u => u.username === username && u.password === password);
-  if (foundUser) {
-    currentUser = foundUser;
-    localStorage.setItem("jasa_current_user", JSON.stringify(currentUser));
-    applyUserPermissions();
-    document.getElementById("loginScreen").style.display = "none";
-    this.reset();
-  } else {
-    alert("Invalid username or password.");
-  }
-});
-
 function logoutUser() {
   currentUser = null;
   localStorage.removeItem("jasa_current_user");
