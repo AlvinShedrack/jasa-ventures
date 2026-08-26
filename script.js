@@ -1,3 +1,4 @@
+
 let ledgerRecords = JSON.parse(localStorage.getItem("jasa_ledger_records")) || [];
 let salesRecords = JSON.parse(localStorage.getItem("jasa_sales_records")) || [];
 let purchaseRecords = JSON.parse(localStorage.getItem("jasa_purchase_records")) || [];
@@ -16,24 +17,6 @@ let editingRecord = {
 const salesQuantityInput = document.getElementById("salesQuantity");
 const salesPriceInput = document.getElementById("salesPrice");
 const salesAmountInput = document.getElementById("salesAmount");
-const salesAmountPaidInput = document.getElementById("salesAmountPaid");
-const salesPaidByInput = document.getElementById("salesPaidBy");
-const salesBalanceInput = document.getElementById("salesBalanceRemaining");
-
-
-/* =========================
-   USER AUTHENTICATION & ROLES
-========================= */
-/* =========================
-   USER AUTHENTICATION & ROLES
-========================= */
-let users = JSON.parse(localStorage.getItem("jasa_users")) || [
-  { username: "woniala@jasa.com", password: "woniala2026", role: "admin" },
-  { username: "employee@jasa.com", password: "employee2026", role: "employee" }
-];
-let currentUser = JSON.parse(localStorage.getItem("jasa_current_user")) || null;
-
-// Handle Login Form Submission
 document.getElementById("loginForm").addEventListener("submit", function (e) {
   e.preventDefault();
   const username = document.getElementById("loginUsername").value.trim();
