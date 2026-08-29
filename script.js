@@ -1388,6 +1388,7 @@ document.getElementById("advanceForm").addEventListener("submit", function (even
     netWeight,
     price,
     amountRecovered,
+    amount: amountRecovered,
     excessDelivery,
     _updatedAt: Date.now()
   };
