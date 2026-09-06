@@ -6,6 +6,53 @@ let advanceRecords = JSON.parse(localStorage.getItem("jasa_advance_records")) ||
 
 let deferredPrompt = null;
 
+
+if (!window.CSS || typeof window.CSS.escape !== "function") {
+  window.CSS = window.CSS || {};
+  window.CSS.escape = function(value) {
+    return String(value).replace(/[^a-zA-Z0-9_-]/g, "\\$&");
+  };
+}
+
+/* =========================
+   INLINE TABLE EDITING
+   ========================= */
+(function addInlineEditStyles() {
+  if (document.getElementById("inlineEditStyles")) return;
+  const style = document.createElement("style");
+  style.id = "inlineEditStyles";
+  style.textContent = `
+    tr.inline-editing td {
+      vertical-align: middle;
+    }
+    tr.inline-editing input,
+    tr.inline-editing select {
+      min-height: 32px;
+      font: inherit;
+      background: #fff;
+    }
+    tr.inline-editing input:focus,
+    tr.inline-editing select:focus {
+      outline: 2px solid rgba(36,56,101,.22);
+      border-color: #243865;
+    }
+    tr.inline-editing .save-btn {
+      cursor: pointer;
+      border: 0;
+      border-radius: 5px;
+      padding: 5px 9px;
+      background: #0f8a3a;
+      color: #fff;
+    }
+    tr.inline-editing .secondary-btn {
+      cursor: pointer;
+      padding: 5px 9px;
+    }
+  `;
+  document.head.appendChild(style);
+})();
+
+
 let editingRecord = {
   ledger: null,
   sales: null,
@@ -568,8 +615,19 @@ function renderLedger() {
       controls.style.cssText = "display:flex;align-items:center;justify-content:center;gap:10px;flex-wrap:wrap;padding:12px 4px;font-size:13px;";
       controls.innerHTML = `<button type="button" id="ledgerPrevPage" class="secondary-btn">Previous</button><span id="ledgerPageInfo"></span><button type="button" id="ledgerNextPage" class="secondary-btn">Next</button>`;
       wrapper.insertAdjacentElement("afterend", controls);
-      document.getElementById("ledgerPrevPage")?.addEventListener("click", () => { if (ledgerCurrentPage > 1) { ledgerCurrentPage--; renderLedger(); } });
-      document.getElementById("ledgerNextPage")?.addEventListener("click", () => { ledgerCurrentPage++; renderLedger(); });
+      document.getElementById("ledgerPrevPage")?.addEventListener("click", () => {
+        if (ledgerCurrentPage > 1) {
+          ledgerCurrentPage--;
+          renderLedger();
+        }
+      });
+      document.getElementById("ledgerNextPage")?.addEventListener("click", () => {
+        const totalPages = Math.max(1, Math.ceil(filtered.length / LEDGER_PAGE_SIZE));
+        if (ledgerCurrentPage < totalPages) {
+          ledgerCurrentPage++;
+          renderLedger();
+        }
+      });
     }
   }
 
@@ -587,11 +645,13 @@ function renderLedger() {
 
   let currentDate = null;
   let groupIndex = 0;
+
   const rows = pageRecords.map((record, pageIndex) => {
     const recordDateKey = record.date ? String(record.date).split("T")[0] : "";
     if (currentDate !== null && recordDateKey !== currentDate) groupIndex = (groupIndex + 1) % 2;
     currentDate = recordDateKey;
-    return `<tr class="date-group-${groupIndex}">
+
+    return `<tr class="date-group-${groupIndex}" data-record-id="${escapeHTML(record.id)}" data-table-type="ledger">
       <td>${startIndex + pageIndex + 1}</td>
       <td>${formatDate(record.date)}</td>
       <td>${escapeHTML(record.description)}</td>
@@ -612,935 +672,612 @@ function renderLedger() {
   if (prev) prev.disabled = ledgerCurrentPage <= 1;
   if (next) next.disabled = ledgerCurrentPage >= totalPages;
 }
-function deleteLedger(id) {
-  if (!confirm("Delete this ledger record?")) return;
-
-  ledgerRecords = ledgerRecords.filter((record) => String(record.id) !== String(id));
-   setLocalUpdatedAt(Date.now());
-  saveAll();
-  renderAll();
-}
-
-/* =========================
-   SALES
-========================= */
-
-document.getElementById("salesForm").addEventListener("submit", function (event) {
-  event.preventDefault();
-  const date = document.getElementById("salesDate").value;
-  const description = document.getElementById("salesDescription").value.trim();
-  const invoice = document.getElementById("salesInvoice").value.trim();
-  const quantity = Number(document.getElementById("salesQuantity").value) || 0;
-  const price = Number(document.getElementById("salesPrice").value) || 0;
-  const amount = Number(document.getElementById("salesAmount").value) || quantity * price;
-  const amountPaid = Number(document.getElementById("salesAmountPaid").value) || 0;
-  const paidBy = document.getElementById("salesPaidBy").value.trim();
-  const balanceRemaining = Math.max(amount - amountPaid, 0);
-
-  // Detailed validation with field-specific messages
-  const errors = [];
-  if (!date) errors.push("Date is required.");
-  if (!description) errors.push("Description / Customer is required.");
-  if (quantity <= 0) errors.push("Quantity must be greater than zero.");
-  if (price <= 0) errors.push("Price must be greater than zero.");
-  if (amountPaid < 0) errors.push("Amount paid must be zero or more.");
-  if (amountPaid > amount) errors.push("Amount paid cannot exceed total amount.");
-
-  if (errors.length) {
-    alert("Please fix the following:\n- " + errors.join("\n- "));
-    return;
-  }
-
-  const newRecord = {
-    id: editingRecord.sales || createId(),
-    date,
-    description,
-    invoice,
-    quantity,
-    price,
-    amount,
-    amountPaid,
-    paidBy,
-    balanceRemaining,
-    _updatedAt: Date.now()
-  };
-
-  if (editingRecord.sales) {
-    salesRecords = salesRecords.map(r => r.id === editingRecord.sales ? newRecord : r);
-    editingRecord.sales = null;
-    document.getElementById("salesSubmitBtn").textContent = "Add Sale";
-    // hide cancel button when edit completes
-    const cancelBtn = document.getElementById("salesCancelBtn");
-    if (cancelBtn) cancelBtn.style.display = 'none';
-  } else {
-    salesRecords.push(newRecord);
-  }
-
-  saveAll();
-  renderAll();
-  this.reset();
-  document.getElementById("salesDate").valueAsDate = new Date();
-});
-
-// Search/filter support for sales
-function clearSalesSearch() {
-  const el = document.getElementById("salesSearch");
-  if (el) {
-    el.value = "";
-    renderSales();
-  }
-}
-
-function clearLedgerSearch() {
-  const el = document.getElementById("ledgerSearch");
-  if (el) {
-    el.value = "";
-    ledgerCurrentPage = 1;
-    renderLedger();
-  }
-}
-
-function clearPurchaseSearch() {
-  const el = document.getElementById("purchaseSearch");
-  if (el) {
-    el.value = "";
-    renderPurchases();
-  }
-}
-
-function clearCostSalesSearch() {
-  const el = document.getElementById("costSalesSearch");
-  if (el) {
-    el.value = "";
-    renderCostSales();
-  }
-}
-
-function clearAdvanceSearch() {
-  const el = document.getElementById("advanceSearch");
-  if (el) {
-    el.value = "";
-    renderAdvances();
-  }
-}
-
-// If the search input is already present, attach listener immediately (script loaded at end of body).
-const _salesSearchEl = document.getElementById("salesSearch");
-if (_salesSearchEl) {
-  _salesSearchEl.addEventListener("input", () => { salesCurrentPage=1; renderSales(); });
-} else {
-  document.addEventListener("DOMContentLoaded", () => {
-    const search = document.getElementById("salesSearch");
-    if (search) search.addEventListener("input", () => renderSales());
-  });
-}
-
-// ledger search
-const _ledgerSearchEl = document.getElementById("ledgerSearch");
-if (_ledgerSearchEl) {
-  _ledgerSearchEl.addEventListener("input", () => { ledgerCurrentPage = 1; renderLedger(); });
-} else {
-  document.addEventListener("DOMContentLoaded", () => {
-    const s = document.getElementById("ledgerSearch");
-    if (s) s.addEventListener("input", () => { ledgerCurrentPage = 1; renderLedger(); });
-  });
-}
-
-// purchase search
-const _purchaseSearchEl = document.getElementById("purchaseSearch");
-if (_purchaseSearchEl) {
-  _purchaseSearchEl.addEventListener("input", () => { purchaseCurrentPage=1; renderPurchases(); });
-} else {
-  document.addEventListener("DOMContentLoaded", () => {
-    const s = document.getElementById("purchaseSearch");
-    if (s) s.addEventListener("input", () => renderPurchases());
-  });
-}
-
-// costSales search
-const _costSalesSearchEl = document.getElementById("costSalesSearch");
-if (_costSalesSearchEl) {
-  _costSalesSearchEl.addEventListener("input", () => { costSalesCurrentPage=1; renderCostSales(); });
-} else {
-  document.addEventListener("DOMContentLoaded", () => {
-    const s = document.getElementById("costSalesSearch");
-    if (s) s.addEventListener("input", () => renderCostSales());
-  });
-}
-
-// advance search
-const _advanceSearchEl = document.getElementById("advanceSearch");
-if (_advanceSearchEl) {
-  _advanceSearchEl.addEventListener("input", () => { advanceCurrentPage=1; renderAdvances(); });
-} else {
-  document.addEventListener("DOMContentLoaded", () => {
-    const s = document.getElementById("advanceSearch");
-    if (s) s.addEventListener("input", () => renderAdvances());
-  });
-}
-
-function cancelEditSale() {
-  // Clear edit state and reset form
-  editingRecord.sales = null;
-  const form = document.getElementById("salesForm");
-  if (form) form.reset();
-  document.getElementById("salesDate").valueAsDate = new Date();
-  document.getElementById("salesSubmitBtn").textContent = "Add Sale";
-  const cancelBtn = document.getElementById("salesCancelBtn");
-  if (cancelBtn) cancelBtn.style.display = 'none';
-}
-
-function sortByLatestDate(a, b) {
-  const dateA = new Date(a.date || a.advanceDate || 0);
-  const dateB = new Date(b.date || b.advanceDate || 0);
-  return dateB - dateA; // Descending order (newest date first)
-}
 
 function renderSales() {
-  const table=document.getElementById("salesTable"), count=document.getElementById("salesCount"), query=(document.getElementById("salesSearch")?.value||"").trim().toLowerCase();
-  const filtered=query?salesRecords.filter((r)=>(r.description||"").toLowerCase().includes(query)||(r.invoice||"").toLowerCase().includes(query)):[...salesRecords]; filtered.sort(sortByLatestDate); count.textContent=`${filtered.length} record${filtered.length===1?"":"s"}`;
-  const controls=ensurePagination(table,'sales',()=>salesCurrentPage,v=>salesCurrentPage=v,renderSales,()=>filtered.length);
-  if(!filtered.length){table.innerHTML=`<tr><td colspan="12" class="empty-row">No sales records found.</td></tr>`;salesCurrentPage=1;if(controls)controls.style.display='none';return;}
-  const {totalPages,safePage,startIndex,pageRecords}=paginateRecords(filtered,salesCurrentPage);salesCurrentPage=safePage;
-  table.innerHTML=pageRecords.map((record,index)=>`<tr><td>${startIndex+index+1}</td><td>${formatDate(record.date)}</td><td>${escapeHTML(record.description)}</td><td>${escapeHTML(record.invoice||'-')}</td><td>${formatNumber(record.quantity)}</td><td>${formatMoney(record.price)}</td><td>${formatMoney(record.amount)}</td><td>${formatMoney(record.amountPaid||0)}</td><td>${escapeHTML(record.paidBy||'-')}</td><td>${formatMoney(record.balanceRemaining||0)}</td><td>${escapeHTML(record.month||'-')}</td><td><div class="action-buttons"><button class="edit-btn" onclick="editSale('${record.id}')">Edit</button><button class="delete-btn" onclick="deleteSale('${record.id}')">Delete</button></div></td></tr>`).join(''); updatePager('sales',controls,salesCurrentPage,totalPages,startIndex,filtered.length);
-}
+  const table = document.getElementById("salesTable");
+  const count = document.getElementById("salesCount");
+  const query = (document.getElementById("salesSearch")?.value || "").trim().toLowerCase();
 
+  const filtered = query
+    ? salesRecords.filter((r) =>
+        (r.description || "").toLowerCase().includes(query) ||
+        (r.invoice || "").toLowerCase().includes(query)
+      )
+    : [...salesRecords];
 
-function deleteSale(id) {
-  if (!confirm("Delete this sales record?")) return;
+  filtered.sort(sortByLatestDate);
+  count.textContent = `${filtered.length} record${filtered.length === 1 ? "" : "s"}`;
 
-  salesRecords = salesRecords.filter((record) => String(record.id) !== String(id));
-  setLocalUpdatedAt(Date.now());
-  saveAll();
-  renderAll();
-}
+  const controls = ensurePagination(
+    table, "sales",
+    () => salesCurrentPage,
+    v => salesCurrentPage = v,
+    renderSales,
+    () => filtered.length
+  );
 
-/* =========================
-   PURCHASES
-========================= */
-
-document.getElementById("purchaseForm").addEventListener("submit", function (event) {
-  event.preventDefault();
-
-  updatePurchaseAmount();
-
-  const date = document.getElementById("purchaseDate").value;
-  const type = document.getElementById("purchaseType").value;
-  const description = document.getElementById("purchaseDescription").value.trim();
-  const receipt = document.getElementById("purchaseReceipt").value.trim();
-  const boughtBy = document.getElementById("purchaseBoughtBy").value.trim();
-  const quantity = Number(document.getElementById("purchaseQuantity").value);
-  const price = Number(document.getElementById("purchasePrice").value);
-  const amount = quantity * price;
-  const amountPaid = Number(document.getElementById("purchaseAmountPaid").value) || 0;
-  const balanceRemaining = Math.max(amount - amountPaid, 0);
-
-  const errors = [];
-  if (!date) errors.push("Date is required.");
-  if (!type) errors.push("Purchase type is required.");
-  if (!description) errors.push("Supplier / Description is required.");
-  if (!boughtBy) errors.push("Bought by is required.");
-  if (quantity <= 0) errors.push("Quantity must be greater than zero.");
-  if (price <= 0) errors.push("Price must be greater than zero.");
-  if (amount <= 0) errors.push("Amount must be greater than zero.");
-  if (amountPaid < 0) errors.push("Amount paid must be zero or more.");
-  if (amountPaid > amount) errors.push("Amount paid cannot exceed total amount.");
-
-  if (errors.length) {
-    alert("Please fix the following:\n- " + errors.join("\n- "));
+  if (!filtered.length) {
+    table.innerHTML = `<tr><td colspan="12" class="empty-row">No sales records found.</td></tr>`;
+    salesCurrentPage = 1;
+    if (controls) controls.style.display = "none";
     return;
   }
 
-  const newRecord = {
-    id: editingRecord.purchase || createId(),
-    date,
-    type,
-    description,
-    receipt,
-    boughtBy,
-    quantity,
-    price,
-    amount,
-    amountPaid,
-    balanceRemaining,
-    _updatedAt: Date.now()
-  };
+  const { totalPages, safePage, startIndex, pageRecords } = paginateRecords(filtered, salesCurrentPage);
+  salesCurrentPage = safePage;
 
-  if (editingRecord.purchase) {
-    purchaseRecords = purchaseRecords.map((record) =>
-      String(record.id) === String(editingRecord.purchase) ? newRecord : record
-    );
-    editingRecord.purchase = null;
-    document.getElementById("purchaseSubmitBtn").textContent = "Add Purchase";
-  } else {
-    purchaseRecords.push(newRecord);
-  }
+  table.innerHTML = pageRecords.map((record, index) => `
+    <tr data-record-id="${escapeHTML(record.id)}" data-table-type="sales">
+      <td>${startIndex + index + 1}</td>
+      <td>${formatDate(record.date)}</td>
+      <td>${escapeHTML(record.description)}</td>
+      <td>${escapeHTML(record.invoice || "-")}</td>
+      <td>${formatNumber(record.quantity)}</td>
+      <td>${formatMoney(record.price)}</td>
+      <td>${formatMoney(record.amount)}</td>
+      <td>${formatMoney(record.amountPaid || 0)}</td>
+      <td>${escapeHTML(record.paidBy || "-")}</td>
+      <td>${formatMoney(record.balanceRemaining || 0)}</td>
+      <td>${escapeHTML(record.month || getMonthName(record.date) || "-")}</td>
+      <td><div class="action-buttons"><button class="edit-btn" onclick="editSale('${record.id}')">Edit</button><button class="delete-btn" onclick="deleteSale('${record.id}')">Delete</button></div></td>
+    </tr>`).join("");
 
-  saveAll();
-  renderAll();
-
-  this.reset();
-  document.getElementById("purchaseDate").valueAsDate = new Date();
-  document.getElementById("purchaseAmount").value = "";
-});
+  updatePager("sales", controls, salesCurrentPage, totalPages, startIndex, filtered.length);
+}
 
 function renderPurchases() {
-  const table=document.getElementById("purchaseTable"), count=document.getElementById("purchaseCount"), query=(document.getElementById("purchaseSearch")?.value||"").trim().toLowerCase();
-  const filtered=query?purchaseRecords.filter((r)=>(r.description||"").toLowerCase().includes(query)||(r.receipt||"").toLowerCase().includes(query)):[...purchaseRecords]; filtered.sort(sortByLatestDate); count.textContent=`${filtered.length} record${filtered.length===1?"":"s"}`;
-  const controls=ensurePagination(table,'purchase',()=>purchaseCurrentPage,v=>purchaseCurrentPage=v,renderPurchases,()=>filtered.length);
-  if(!filtered.length){table.innerHTML=`<tr><td colspan="13" class="empty-row">No purchase records found.</td></tr>`;purchaseCurrentPage=1;if(controls)controls.style.display='none';return;}
-  const {totalPages,safePage,startIndex,pageRecords}=paginateRecords(filtered,purchaseCurrentPage);purchaseCurrentPage=safePage;
-  table.innerHTML=pageRecords.map((record,index)=>`<tr><td>${startIndex+index+1}</td><td>${formatDate(record.date)}</td><td>${escapeHTML(record.type)}</td><td>${escapeHTML(record.description)}</td><td>${escapeHTML(record.receipt||'-')}</td><td>${escapeHTML(record.boughtBy)}</td><td>${formatNumber(record.quantity)}</td><td>${formatMoney(record.price)}</td><td>${formatMoney(record.amount)}</td><td>${formatMoney(record.amountPaid||0)}</td><td>${formatMoney(record.balanceRemaining||0)}</td><td>${escapeHTML(record.month||'-')}</td><td><div class="action-buttons"><button class="edit-btn" onclick="editPurchase('${record.id}')">Edit</button><button class="delete-btn" onclick="deletePurchase('${record.id}')">Delete</button></div></td></tr>`).join(''); updatePager('purchase',controls,purchaseCurrentPage,totalPages,startIndex,filtered.length);
-}
+  const table = document.getElementById("purchaseTable");
+  const count = document.getElementById("purchaseCount");
+  const query = (document.getElementById("purchaseSearch")?.value || "").trim().toLowerCase();
 
-function deletePurchase(id) {
-  if (!confirm("Delete this purchase record?")) return;
+  const filtered = query
+    ? purchaseRecords.filter((r) =>
+        (r.description || "").toLowerCase().includes(query) ||
+        (r.receipt || "").toLowerCase().includes(query)
+      )
+    : [...purchaseRecords];
 
-  purchaseRecords = purchaseRecords.filter((record) => String(record.id) !== String(id));
-  setLocalUpdatedAt(Date.now());
-  saveAll();
-  renderAll();
-}
+  filtered.sort(sortByLatestDate);
+  count.textContent = `${filtered.length} record${filtered.length === 1 ? "" : "s"}`;
 
-function generateSalesReceipt(id) {
-  const record = salesRecords.find((r) => String(r.id) === String(id));
-  if (!record) {
-    alert("Sales record not found.");
+  const controls = ensurePagination(
+    table, "purchase",
+    () => purchaseCurrentPage,
+    v => purchaseCurrentPage = v,
+    renderPurchases,
+    () => filtered.length
+  );
+
+  if (!filtered.length) {
+    table.innerHTML = `<tr><td colspan="13" class="empty-row">No purchase records found.</td></tr>`;
+    purchaseCurrentPage = 1;
+    if (controls) controls.style.display = "none";
     return;
   }
 
-  const receiptHTML = `
-<!DOCTYPE html>
-<html>
-<head>
-  <meta charset="UTF-8">
-  <title>Sales Receipt - ${escapeHTML(record.invoice || "No Invoice")}</title>
-  <style>
-    body {
-      font-family: Arial, sans-serif;
-      color: #222;
-      margin: 20px;
-      background: white;
-    }
-    .receipt-container {
-      width: 100%;
-      max-width: 600px;
-      margin: 0 auto;
-      border: 2px solid #243865;
-      border-radius: 10px;
-      padding: 20px;
-      background: white;
-    }
-    .receipt-header {
-      text-align: center;
-      border-bottom: 2px solid #243865;
-      padding-bottom: 15px;
-      margin-bottom: 20px;
-    }
-    .receipt-header h1 {
-      color: #243865;
-      margin: 0 0 5px;
-      font-size: 24px;
-    }
-    .receipt-header p {
-      margin: 3px 0;
-      color: #666;
-      font-size: 12px;
-    }
-    .receipt-content {
-      margin: 20px 0;
-    }
-    .receipt-section {
-      margin-bottom: 20px;
-    }
-    .receipt-section h3 {
-      color: #243865;
-      margin: 10px 0 8px;
-      font-size: 14px;
-      text-transform: uppercase;
-      border-bottom: 1px solid #e7ad4a;
-      padding-bottom: 5px;
-    }
-    .receipt-row {
-      display: flex;
-      justify-content: space-between;
-      margin-bottom: 8px;
-      font-size: 13px;
-    }
-    .receipt-row label {
-      font-weight: bold;
-      color: #243865;
-      min-width: 120px;
-    }
-    .receipt-row value {
-      text-align: right;
-      color: #333;
-    }
-    .receipt-total {
-      display: flex;
-      justify-content: space-between;
-      margin-top: 15px;
-      padding-top: 15px;
-      border-top: 2px solid #243865;
-      font-weight: bold;
-      font-size: 16px;
-      color: #243865;
-    }
-    .receipt-footer {
-      text-align: center;
-      margin-top: 20px;
-      padding-top: 15px;
-      border-top: 1px solid #ddd;
-      font-size: 11px;
-      color: #666;
-    }
-    @media print {
-      body { margin: 0; padding: 0; }
-      .receipt-container { border: none; box-shadow: none; }
-    }
-  </style>
-</head>
-<body>
-  <div class="receipt-container">
-    <div class="receipt-header">
-      <h1>SALES RECEIPT</h1>
-      <p>Jasa Ventures</p>
-      <p>Generated: ${formatDateTimeForReport(new Date())}</p>
-    </div>
-    
-    <div class="receipt-content">
-      <div class="receipt-section">
-        <h3>Invoice Details</h3>
-        <div class="receipt-row">
-          <label>Invoice No:</label>
-          <value>${escapeHTML(record.invoice || "N/A")}</value>
-        </div>
-        <div class="receipt-row">
-          <label>Date:</label>
-          <value>${formatDate(record.date)}</value>
-        </div>
-      </div>
+  const { totalPages, safePage, startIndex, pageRecords } = paginateRecords(filtered, purchaseCurrentPage);
+  purchaseCurrentPage = safePage;
 
-      <div class="receipt-section">
-        <h3>Customer Details</h3>
-        <div class="receipt-row">
-          <label>Customer:</label>
-          <value>${escapeHTML(record.description)}</value>
-        </div>
-        <div class="receipt-row">
-          <label>Paid By:</label>
-          <value>${escapeHTML(record.paidBy || "-")}</value>
-        </div>
-      </div>
+  table.innerHTML = pageRecords.map((record, index) => `
+    <tr data-record-id="${escapeHTML(record.id)}" data-table-type="purchase">
+      <td>${startIndex + index + 1}</td>
+      <td>${formatDate(record.date)}</td>
+      <td>${escapeHTML(record.type || "Other")}</td>
+      <td>${escapeHTML(record.description)}</td>
+      <td>${escapeHTML(record.receipt || "-")}</td>
+      <td>${escapeHTML(record.boughtBy || "-")}</td>
+      <td>${formatNumber(record.quantity)}</td>
+      <td>${formatMoney(record.price)}</td>
+      <td>${formatMoney(record.amount)}</td>
+      <td>${formatMoney(record.amountPaid || 0)}</td>
+      <td>${formatMoney(record.balanceRemaining || 0)}</td>
+      <td>${escapeHTML(record.month || getMonthName(record.date) || "-")}</td>
+      <td><div class="action-buttons"><button class="edit-btn" onclick="editPurchase('${record.id}')">Edit</button><button class="delete-btn" onclick="deletePurchase('${record.id}')">Delete</button></div></td>
+    </tr>`).join("");
 
-      <div class="receipt-section">
-        <h3>Sale Details</h3>
-        <div class="receipt-row">
-          <label>Quantity:</label>
-          <value>${formatNumber(record.quantity)}</value>
-        </div>
-        <div class="receipt-row">
-          <label>Unit Price:</label>
-          <value>${formatMoney(record.price)}</value>
-        </div>
-        <div class="receipt-row">
-          <label>Total Amount:</label>
-          <value>${formatMoney(record.amount)}</value>
-        </div>
-        <div class="receipt-row">
-          <label>Amount Paid:</label>
-          <value>${formatMoney(record.amountPaid || 0)}</value>
-        </div>
-        <div class="receipt-row">
-          <label>Balance:</label>
-          <value>${formatMoney(record.balanceRemaining ?? (record.amount - Number(record.amountPaid || 0)))}</value>
-        </div>
-      </div>
-
-      <div class="receipt-section">
-        <h3>Additional Info</h3>
-        <div class="receipt-row">
-          <label>Month:</label>
-          <value>${getMonthName(record.date)}</value>
-        </div>
-      </div>
-    </div>
-
-    <div class="receipt-footer">
-      <p>This is a system-generated receipt. Retain for your records.</p>
-      <p>&copy; 2026 Jasa Ventures. All rights reserved.</p>
-    </div>
-  </div>
-</body>
-</html>`;
-
-  const printWindow = window.open("", "_blank");
-  printWindow.document.open();
-  printWindow.document.write(receiptHTML);
-  printWindow.document.close();
-  
-  printWindow.onload = function () {
-    printWindow.focus();
-    printWindow.print();
-  };
+  updatePager("purchase", controls, purchaseCurrentPage, totalPages, startIndex, filtered.length);
 }
-
-function generatePurchaseReceipt(id) {
-  const record = purchaseRecords.find((r) => String(r.id) === String(id));
-  if (!record) {
-    alert("Purchase record not found.");
-    return;
-  }
-
-  const receiptHTML = `
-<!DOCTYPE html>
-<html>
-<head>
-  <meta charset="UTF-8">
-  <title>Purchase Receipt - ${escapeHTML(record.receipt || "No Receipt")}</title>
-  <style>
-    body {
-      font-family: Arial, sans-serif;
-      color: #222;
-      margin: 20px;
-      background: white;
-    }
-    .receipt-container {
-      width: 100%;
-      max-width: 600px;
-      margin: 0 auto;
-      border: 2px solid #243865;
-      border-radius: 10px;
-      padding: 20px;
-      background: white;
-    }
-    .receipt-header {
-      text-align: center;
-      border-bottom: 2px solid #243865;
-      padding-bottom: 15px;
-      margin-bottom: 20px;
-    }
-    .receipt-header h1 {
-      color: #243865;
-      margin: 0 0 5px;
-      font-size: 24px;
-    }
-    .receipt-header p {
-      margin: 3px 0;
-      color: #666;
-      font-size: 12px;
-    }
-    .receipt-content {
-      margin: 20px 0;
-    }
-    .receipt-section {
-      margin-bottom: 20px;
-    }
-    .receipt-section h3 {
-      color: #243865;
-      margin: 10px 0 8px;
-      font-size: 14px;
-      text-transform: uppercase;
-      border-bottom: 1px solid #e7ad4a;
-      padding-bottom: 5px;
-    }
-    .receipt-row {
-      display: flex;
-      justify-content: space-between;
-      margin-bottom: 8px;
-      font-size: 13px;
-    }
-    .receipt-row label {
-      font-weight: bold;
-      color: #243865;
-      min-width: 120px;
-    }
-    .receipt-row value {
-      text-align: right;
-      color: #333;
-    }
-    .receipt-total {
-      display: flex;
-      justify-content: space-between;
-      margin-top: 15px;
-      padding-top: 15px;
-      border-top: 2px solid #243865;
-      font-weight: bold;
-      font-size: 16px;
-      color: #243865;
-    }
-    .receipt-footer {
-      text-align: center;
-      margin-top: 20px;
-      padding-top: 15px;
-      border-top: 1px solid #ddd;
-      font-size: 11px;
-      color: #666;
-    }
-    @media print {
-      body { margin: 0; padding: 0; }
-      .receipt-container { border: none; box-shadow: none; }
-    }
-  </style>
-</head>
-<body>
-  <div class="receipt-container">
-    <div class="receipt-header">
-      <h1>PURCHASE RECEIPT</h1>
-      <p>Jasa Ventures</p>
-      <p>Generated: ${formatDateTimeForReport(new Date())}</p>
-    </div>
-    
-    <div class="receipt-content">
-      <div class="receipt-section">
-        <h3>Receipt Details</h3>
-        <div class="receipt-row">
-          <label>Receipt No:</label>
-          <value>${escapeHTML(record.receipt || "N/A")}</value>
-        </div>
-        <div class="receipt-row">
-          <label>Date:</label>
-          <value>${formatDate(record.date)}</value>
-        </div>
-        <div class="receipt-row">
-          <label>Bought By:</label>
-          <value>${escapeHTML(record.boughtBy || "-")}</value>
-        </div>
-        <div class="receipt-row">
-          <label>Amount Paid:</label>
-          <value>${formatMoney(record.amountPaid || 0)}</value>
-        </div>
-        <div class="receipt-row">
-          <label>Balance:</label>
-          <value>${formatMoney(record.balanceRemaining ?? (record.amount - Number(record.amountPaid || 0)))}</value>
-        </div>
-      </div>
-
-      <div class="receipt-section">
-        <h3>Supplier / Item Details</h3>
-        <div class="receipt-row">
-          <label>Supplier:</label>
-          <value>${escapeHTML(record.description)}</value>
-        </div>
-        <div class="receipt-row">
-          <label>Type:</label>
-          <value>${escapeHTML(record.type || "Other")}</value>
-        </div>
-        <div class="receipt-row">
-          <label>Quantity:</label>
-          <value>${formatNumber(record.quantity)}</value>
-        </div>
-        <div class="receipt-row">
-          <label>Unit Price:</label>
-          <value>${formatMoney(record.price)}</value>
-        </div>
-      </div>
-
-      <div class="receipt-section">
-        <div class="receipt-total">
-          <span>Total Amount:</span>
-          <span>${formatMoney(record.amount)}</span>
-        </div>
-      </div>
-
-      <div class="receipt-section">
-        <h3>Additional Info</h3>
-        <div class="receipt-row">
-          <label>Month:</label>
-          <value>${getMonthName(record.date)}</value>
-        </div>
-      </div>
-    </div>
-
-    <div class="receipt-footer">
-      <p>This is a system-generated receipt. Retain for your records.</p>
-      <p>&copy; 2026 Jasa Ventures. All rights reserved.</p>
-    </div>
-  </div>
-</body>
-</html>`;
-
-  const printWindow = window.open("", "_blank");
-  printWindow.document.open();
-  printWindow.document.write(receiptHTML);
-  printWindow.document.close();
-  
-  printWindow.onload = function () {
-    printWindow.focus();
-    printWindow.print();
-  };
-}
-
-/* =========================
-   COST OF SALES
-========================= */
-
-document.getElementById("costSalesForm").addEventListener("submit", function (event) {
-  event.preventDefault();
-
-  updateCostSalesAmount();
-
-  const date = document.getElementById("costSalesDate").value;
-  const description = document.getElementById("costSalesDescription").value.trim();
-  const reference = document.getElementById("costSalesReference").value.trim();
-  const quantity = Number(document.getElementById("costSalesQuantity").value);
-  const price = Number(document.getElementById("costSalesPrice").value);
-  const amount = quantity * price;
-
-  if (!date || !description || quantity <= 0 || price <= 0 || amount <= 0) {
-    alert("Please enter valid cost of sales details.");
-    return;
-  }
-
-  const newRecord = {
-    id: editingRecord.costSales || createId(),
-    date,
-    description,
-    reference,
-    quantity,
-    price,
-    amount,
-    _updatedAt: Date.now()
-  };
-
-  if (editingRecord.costSales) {
-    costSalesRecords = costSalesRecords.map((record) =>
-      String(record.id) === String(editingRecord.costSales) ? newRecord : record
-    );
-    editingRecord.costSales = null;
-    document.getElementById("costSalesSubmitBtn").textContent = "Add Cost";
-  } else {
-    costSalesRecords.push(newRecord);
-  }
-
-  saveAll();
-  renderAll();
-
-  this.reset();
-  document.getElementById("costSalesDate").valueAsDate = new Date();
-  document.getElementById("costSalesAmount").value = "";
-});
 
 function renderCostSales() {
-  const table=document.getElementById("costSalesTable"), count=document.getElementById("costSalesCount"), query=(document.getElementById("costSalesSearch")?.value||"").trim().toLowerCase();
-  const filtered=query?costSalesRecords.filter((r)=>(r.description||"").toLowerCase().includes(query)||(r.reference||"").toLowerCase().includes(query)):[...costSalesRecords]; filtered.sort(sortByLatestDate); count.textContent=`${filtered.length} record${filtered.length===1?"":"s"}`;
-  const controls=ensurePagination(table,'costSales',()=>costSalesCurrentPage,v=>costSalesCurrentPage=v,renderCostSales,()=>filtered.length);
-  if(!filtered.length){table.innerHTML=`<tr><td colspan="9" class="empty-row">No cost of sales records found.</td></tr>`;costSalesCurrentPage=1;if(controls)controls.style.display='none';return;}
-  const {totalPages,safePage,startIndex,pageRecords}=paginateRecords(filtered,costSalesCurrentPage);costSalesCurrentPage=safePage;
-  table.innerHTML=pageRecords.map((record,index)=>`<tr><td>${startIndex+index+1}</td><td>${formatDate(record.date)}</td><td>${escapeHTML(record.description)}</td><td>${escapeHTML(record.reference||'-')}</td><td>${formatNumber(record.quantity)}</td><td>${formatMoney(record.price)}</td><td>${formatMoney(record.amount)}</td><td>${escapeHTML(record.month||'-')}</td><td><div class="action-buttons"><button class="edit-btn" onclick="editCostSale('${record.id}')">Edit</button><button class="delete-btn" onclick="deleteCostSale('${record.id}')">Delete</button></div></td></tr>`).join(''); updatePager('costSales',controls,costSalesCurrentPage,totalPages,startIndex,filtered.length);
-}
+  const table = document.getElementById("costSalesTable");
+  const count = document.getElementById("costSalesCount");
+  const query = (document.getElementById("costSalesSearch")?.value || "").trim().toLowerCase();
 
-function deleteCostSale(id) {
-  if (!confirm("Delete this cost of sales record?")) return;
+  const filtered = query
+    ? costSalesRecords.filter((r) =>
+        (r.description || "").toLowerCase().includes(query) ||
+        (r.reference || "").toLowerCase().includes(query)
+      )
+    : [...costSalesRecords];
 
-  costSalesRecords = costSalesRecords.filter((record) => String(record.id) !== String(id));
-    setLocalUpdatedAt(Date.now());
-  saveAll();
-  renderAll();
-}
+  filtered.sort(sortByLatestDate);
+  count.textContent = `${filtered.length} record${filtered.length === 1 ? "" : "s"}`;
 
-/* =========================
-   ADVANCE
-========================= */
-// ------------------- ADVANCE -------------------
-document.getElementById("advanceForm").addEventListener("submit", function (event) {
-  event.preventDefault();
+  const controls = ensurePagination(
+    table, "costSales",
+    () => costSalesCurrentPage,
+    v => costSalesCurrentPage = v,
+    renderCostSales,
+    () => filtered.length
+  );
 
-  const advanceDate = document.getElementById("advanceDate").value;
-  const person = document.getElementById("advancePerson").value.trim();
-  const paymentMode = document.getElementById("advancePaymentMode").value;
-  const estimatedPrice = Number(document.getElementById("advanceEstimatedPrice").value) || 0;
-  const estimatedKg = Number(document.getElementById("advanceEstimatedKg").value) || 0;
-  const amountReceived = estimatedPrice * estimatedKg;
-
-  const recoveryDate = document.getElementById("advanceRecoveryDate").value;
-  const recoveryType = document.getElementById("advanceRecoveryType").value;
-  const grossWeight = Number(document.getElementById("advanceGrossWeight").value) || 0;
-  const netWeight = Number(document.getElementById("advanceNetWeight").value) || 0;
-  const price = Number(document.getElementById("advancePrice").value) || 0;
-  const amountRecovered = netWeight * price;
-  const excessDelivery = amountReceived - amountRecovered;
-
-  if (
-    !advanceDate ||
-    !person ||
-    !paymentMode ||
-    !recoveryDate ||
-    !recoveryType ||
-    estimatedPrice <= 0 ||
-    estimatedKg <= 0
-  ) {
-    alert("Please enter valid advance details.");
+  if (!filtered.length) {
+    table.innerHTML = `<tr><td colspan="9" class="empty-row">No cost of sales records found.</td></tr>`;
+    costSalesCurrentPage = 1;
+    if (controls) controls.style.display = "none";
     return;
   }
 
-  const newRecord = {
-    id: editingRecord.advance || createId(),
-    advanceDate,
-    person,
-    paymentMode,
-    estimatedPrice,
-    estimatedKg,
-    amountReceived,
-    recoveryDate,
-    recoveryType,
-    grossWeight,
-    netWeight,
-    price,
-    amountRecovered,
-    amount: amountRecovered,
-    excessDelivery,
-    _updatedAt: Date.now()
-  };
+  const { totalPages, safePage, startIndex, pageRecords } = paginateRecords(filtered, costSalesCurrentPage);
+  costSalesCurrentPage = safePage;
 
-  if (editingRecord.advance) {
-    advanceRecords = advanceRecords.map(record =>
-      String(record.id) === String(editingRecord.advance) ? newRecord : record
-    );
-    editingRecord.advance = null;
-    document.getElementById("advanceSubmitBtn").textContent = "Add Advance";
-  } else {
-    advanceRecords.push(newRecord);
+  table.innerHTML = pageRecords.map((record, index) => `
+    <tr data-record-id="${escapeHTML(record.id)}" data-table-type="costSales">
+      <td>${startIndex + index + 1}</td>
+      <td>${formatDate(record.date)}</td>
+      <td>${escapeHTML(record.description)}</td>
+      <td>${escapeHTML(record.reference || "-")}</td>
+      <td>${formatNumber(record.quantity)}</td>
+      <td>${formatMoney(record.price)}</td>
+      <td>${formatMoney(record.amount)}</td>
+      <td>${escapeHTML(record.month || getMonthName(record.date) || "-")}</td>
+      <td><div class="action-buttons"><button class="edit-btn" onclick="editCostSale('${record.id}')">Edit</button><button class="delete-btn" onclick="deleteCostSale('${record.id}')">Delete</button></div></td>
+    </tr>`).join("");
+
+  updatePager("costSales", controls, costSalesCurrentPage, totalPages, startIndex, filtered.length);
+}
+
+function renderAdvances() {
+  const table = document.getElementById("advanceTable");
+  const count = document.getElementById("advanceCount");
+  const query = (document.getElementById("advanceSearch")?.value || "").trim().toLowerCase();
+
+  const filtered = query
+    ? advanceRecords.filter((r) =>
+        (r.person || "").toLowerCase().includes(query) ||
+        (r.paymentMode || "").toLowerCase().includes(query)
+      )
+    : [...advanceRecords];
+
+  filtered.sort(sortByLatestDate);
+  count.textContent = `${filtered.length} record${filtered.length === 1 ? "" : "s"}`;
+
+  const controls = ensurePagination(
+    table, "advance",
+    () => advanceCurrentPage,
+    v => advanceCurrentPage = v,
+    renderAdvances,
+    () => filtered.length
+  );
+
+  if (!filtered.length) {
+    table.innerHTML = `<tr><td colspan="15" class="empty-row">No advance records found.</td></tr>`;
+    advanceCurrentPage = 1;
+    if (controls) controls.style.display = "none";
+    return;
   }
 
-  saveAll();
-  renderAll();
+  const { totalPages, safePage, startIndex, pageRecords } = paginateRecords(filtered, advanceCurrentPage);
+  advanceCurrentPage = safePage;
 
-  this.reset();
-  document.getElementById("advanceDate").valueAsDate = new Date();
-  document.getElementById("advanceRecoveryDate").valueAsDate = new Date();
-  document.getElementById("advanceAmountReceived").value = "";
-  document.getElementById("advanceAmountRecovered").value = "";
-  document.getElementById("advanceExcessDelivery").value = "";
-});
+  table.innerHTML = pageRecords.map((record, index) => `
+    <tr data-record-id="${escapeHTML(record.id)}" data-table-type="advance">
+      <td>${startIndex + index + 1}</td>
+      <td>${formatDate(record.advanceDate)}</td>
+      <td>${escapeHTML(record.person)}</td>
+      <td>${escapeHTML(record.paymentMode)}</td>
+      <td>${formatMoney(record.estimatedPrice)}</td>
+      <td>${formatNumber(record.estimatedKg)}</td>
+      <td>${formatMoney(record.amountReceived)}</td>
+      <td>${formatDate(record.recoveryDate)}</td>
+      <td>${escapeHTML(record.recoveryType)}</td>
+      <td>${formatNumber(record.grossWeight)}</td>
+      <td>${formatNumber(record.netWeight)}</td>
+      <td>${formatMoney(record.price)}</td>
+      <td>${formatMoney(record.amountRecovered)}</td>
+      <td>${formatNumber(record.excessDelivery)}</td>
+      <td><div class="action-buttons"><button class="edit-btn" onclick="editAdvance('${record.id}')">Edit</button><button class="delete-btn" onclick="deleteAdvance('${record.id}')">Delete</button></div></td>
+    </tr>`).join("");
 
-// ------------------- ADVANCE RENDER -------------------
-function renderAdvances() {
-  const table=document.getElementById("advanceTable"), count=document.getElementById("advanceCount"), query=(document.getElementById("advanceSearch")?.value||"").trim().toLowerCase();
-  const filtered=query?advanceRecords.filter((r)=>(r.person||"").toLowerCase().includes(query)||(r.paymentMode||"").toLowerCase().includes(query)):[...advanceRecords]; filtered.sort(sortByLatestDate); count.textContent=`${filtered.length} record${filtered.length===1?"":"s"}`;
-  const controls=ensurePagination(table,'advance',()=>advanceCurrentPage,v=>advanceCurrentPage=v,renderAdvances,()=>filtered.length);
-  if(!filtered.length){table.innerHTML=`<tr><td colspan="15" class="empty-row">No advance records found.</td></tr>`;advanceCurrentPage=1;if(controls)controls.style.display='none';return;}
-  const {totalPages,safePage,startIndex,pageRecords}=paginateRecords(filtered,advanceCurrentPage);advanceCurrentPage=safePage;
-  table.innerHTML=pageRecords.map((record,index)=>`<tr><td>${startIndex+index+1}</td><td>${formatDate(record.advanceDate)}</td><td>${escapeHTML(record.person)}</td><td>${escapeHTML(record.paymentMode)}</td><td>${formatMoney(record.estimatedPrice)}</td><td>${formatNumber(record.estimatedKg)}</td><td>${formatMoney(record.amountReceived)}</td><td>${formatDate(record.recoveryDate)}</td><td>${escapeHTML(record.recoveryType)}</td><td>${formatNumber(record.grossWeight)}</td><td>${formatNumber(record.netWeight)}</td><td>${formatMoney(record.price)}</td><td>${formatMoney(record.amountRecovered)}</td><td>${formatNumber(record.excessDelivery)}</td><td><div class="action-buttons"><button class="edit-btn" onclick="editAdvance('${record.id}')">Edit</button><button class="delete-btn" onclick="deleteAdvance('${record.id}')">Delete</button></div></td></tr>`).join(''); updatePager('advance',controls,advanceCurrentPage,totalPages,startIndex,filtered.length);
+  updatePager("advance", controls, advanceCurrentPage, totalPages, startIndex, filtered.length);
 }
-function deleteAdvance(id) {
-  if (!confirm("Delete this advance record?")) return;
 
-  advanceRecords = advanceRecords.filter((record) => String(record.id) !== String(id));
-  setLocalUpdatedAt(Date.now());
-  saveAll();
-  renderAll();
+function inlineInput(value, type = "text", extra = "") {
+  const safe = escapeHTML(value ?? "");
+  return `<input type="${type}" value="${safe}" ${extra} style="width:100%;box-sizing:border-box;padding:5px 6px;border:1px solid #9aa8bd;border-radius:5px;">`;
+}
+
+function inlineSelect(value, options) {
+  const current = String(value ?? "");
+  return `<select style="width:100%;box-sizing:border-box;padding:5px 6px;border:1px solid #9aa8bd;border-radius:5px;">
+    ${options.map(option => `<option value="${escapeHTML(option)}" ${String(option) === current ? "selected" : ""}>${escapeHTML(option)}</option>`).join("")}
+  </select>`;
+}
+
+function inlineActionButtons(type, id) {
+  return `<div class="action-buttons" style="display:flex;gap:5px;flex-wrap:wrap;">
+    <button type="button" class="save-btn" onclick="saveInlineEdit('${type}','${escapeHTML(id)}')">Save</button>
+    <button type="button" class="secondary-btn" onclick="cancelInlineEdit('${type}')">Cancel</button>
+  </div>`;
+}
+
+function getTableRowById(type, id) {
+  return document.querySelector(`tr[data-table-type="${type}"][data-record-id="${CSS.escape(String(id))}"]`);
+}
+
+function startInlineEdit(type, id) {
+  const row = getTableRowById(type, id);
+  if (!row) return;
+
+  // Only one row is edited at a time.
+  if (document.querySelector("tr.inline-editing")) {
+    alert("Please save or cancel the current edit first.");
+    return;
+  }
+
+  let record;
+  if (type === "ledger") record = ledgerRecords.find(r => String(r.id) === String(id));
+  if (type === "sales") record = salesRecords.find(r => String(r.id) === String(id));
+  if (type === "purchase") record = purchaseRecords.find(r => String(r.id) === String(id));
+  if (type === "costSales") record = costSalesRecords.find(r => String(r.id) === String(id));
+  if (type === "advance") record = advanceRecords.find(r => String(r.id) === String(id));
+  if (!record) return;
+
+  row.classList.add("inline-editing");
+  row.dataset.originalHTML = row.innerHTML;
+
+  const cells = row.querySelectorAll("td");
+  if (type === "ledger") {
+    cells[1].innerHTML = inlineInput(record.date, "date");
+    cells[2].innerHTML = inlineInput(record.description);
+    cells[3].innerHTML = record.type === "credit" ? inlineInput(record.amount, "number", 'step="any"') : "-";
+    cells[4].innerHTML = record.type === "debit" ? inlineInput(record.amount, "number", 'step="any"') : "-";
+    cells[cells.length - 1].innerHTML = inlineActionButtons(type, id);
+  }
+
+  if (type === "sales") {
+    cells[1].innerHTML = inlineInput(record.date, "date");
+    cells[2].innerHTML = inlineInput(record.description);
+    cells[3].innerHTML = inlineInput(record.invoice || "");
+    cells[4].innerHTML = inlineInput(record.quantity, "number", 'step="any"');
+    cells[5].innerHTML = inlineInput(record.price, "number", 'step="any"');
+    cells[6].innerHTML = inlineInput(Number(record.amount || 0).toFixed(2), "number", 'step="any" readonly');
+    cells[7].innerHTML = inlineInput(record.amountPaid || 0, "number", 'step="any"');
+    cells[8].innerHTML = inlineInput(record.paidBy || "");
+    cells[9].innerHTML = inlineInput(Number(record.balanceRemaining || 0).toFixed(2), "number", 'step="any" readonly');
+    cells[cells.length - 1].innerHTML = inlineActionButtons(type, id);
+
+    const qty = cells[4].querySelector("input");
+    const price = cells[5].querySelector("input");
+    const amount = cells[6].querySelector("input");
+    const paid = cells[7].querySelector("input");
+    const balance = cells[9].querySelector("input");
+
+    const recalc = () => {
+      const total = (Number(qty.value) || 0) * (Number(price.value) || 0);
+      amount.value = total.toFixed(2);
+      balance.value = Math.max(total - (Number(paid.value) || 0), 0).toFixed(2);
+    };
+    qty.addEventListener("input", recalc);
+    price.addEventListener("input", recalc);
+    paid.addEventListener("input", recalc);
+  }
+
+  if (type === "purchase") {
+    cells[1].innerHTML = inlineInput(record.date, "date");
+    cells[2].innerHTML = inlineInput(record.type || "Other");
+    cells[3].innerHTML = inlineInput(record.description);
+    cells[4].innerHTML = inlineInput(record.receipt || "");
+    cells[5].innerHTML = inlineInput(record.boughtBy || "");
+    cells[6].innerHTML = inlineInput(record.quantity, "number", 'step="any"');
+    cells[7].innerHTML = inlineInput(record.price, "number", 'step="any"');
+    cells[8].innerHTML = inlineInput(Number(record.amount || 0).toFixed(2), "number", 'step="any" readonly');
+    cells[9].innerHTML = inlineInput(record.amountPaid || 0, "number", 'step="any"');
+    cells[10].innerHTML = inlineInput(Number(record.balanceRemaining || 0).toFixed(2), "number", 'step="any" readonly');
+    cells[cells.length - 1].innerHTML = inlineActionButtons(type, id);
+
+    const qty = cells[6].querySelector("input");
+    const price = cells[7].querySelector("input");
+    const amount = cells[8].querySelector("input");
+    const paid = cells[9].querySelector("input");
+    const balance = cells[10].querySelector("input");
+
+    const recalc = () => {
+      const total = (Number(qty.value) || 0) * (Number(price.value) || 0);
+      amount.value = total.toFixed(2);
+      balance.value = Math.max(total - (Number(paid.value) || 0), 0).toFixed(2);
+    };
+    qty.addEventListener("input", recalc);
+    price.addEventListener("input", recalc);
+    paid.addEventListener("input", recalc);
+  }
+
+  if (type === "costSales") {
+    cells[1].innerHTML = inlineInput(record.date, "date");
+    cells[2].innerHTML = inlineInput(record.description);
+    cells[3].innerHTML = inlineInput(record.reference || "");
+    cells[4].innerHTML = inlineInput(record.quantity, "number", 'step="any"');
+    cells[5].innerHTML = inlineInput(record.price, "number", 'step="any"');
+    cells[6].innerHTML = inlineInput(Number(record.amount || 0).toFixed(2), "number", 'step="any" readonly');
+    cells[cells.length - 1].innerHTML = inlineActionButtons(type, id);
+
+    const qty = cells[4].querySelector("input");
+    const price = cells[5].querySelector("input");
+    const amount = cells[6].querySelector("input");
+
+    const recalc = () => {
+      amount.value = ((Number(qty.value) || 0) * (Number(price.value) || 0)).toFixed(2);
+    };
+    qty.addEventListener("input", recalc);
+    price.addEventListener("input", recalc);
+  }
+
+  if (type === "advance") {
+    cells[1].innerHTML = inlineInput(record.advanceDate, "date");
+    cells[2].innerHTML = inlineInput(record.person || "");
+    cells[3].innerHTML = inlineInput(record.paymentMode || "");
+    cells[4].innerHTML = inlineInput(record.estimatedPrice || 0, "number", 'step="any"');
+    cells[5].innerHTML = inlineInput(record.estimatedKg || 0, "number", 'step="any"');
+    cells[6].innerHTML = inlineInput(Number(record.amountReceived || 0).toFixed(2), "number", 'step="any" readonly');
+    cells[7].innerHTML = inlineInput(record.recoveryDate, "date");
+    cells[8].innerHTML = inlineInput(record.recoveryType || "");
+    cells[9].innerHTML = inlineInput(record.grossWeight || 0, "number", 'step="any"');
+    cells[10].innerHTML = inlineInput(record.netWeight || 0, "number", 'step="any"');
+    cells[11].innerHTML = inlineInput(record.price || 0, "number", 'step="any"');
+    cells[12].innerHTML = inlineInput(Number(record.amountRecovered || 0).toFixed(2), "number", 'step="any" readonly');
+    cells[13].innerHTML = inlineInput(Number(record.excessDelivery || 0).toFixed(2), "number", 'step="any" readonly');
+    cells[cells.length - 1].innerHTML = inlineActionButtons(type, id);
+
+    const estPrice = cells[4].querySelector("input");
+    const estKg = cells[5].querySelector("input");
+    const received = cells[6].querySelector("input");
+    const netWeight = cells[10].querySelector("input");
+    const price = cells[11].querySelector("input");
+    const recovered = cells[12].querySelector("input");
+    const excess = cells[13].querySelector("input");
+
+    const recalc = () => {
+      const amountReceived = (Number(estPrice.value) || 0) * (Number(estKg.value) || 0);
+      const amountRecovered = (Number(netWeight.value) || 0) * (Number(price.value) || 0);
+      received.value = amountReceived.toFixed(2);
+      recovered.value = amountRecovered.toFixed(2);
+      excess.value = (amountReceived - amountRecovered).toFixed(2);
+    };
+    estPrice.addEventListener("input", recalc);
+    estKg.addEventListener("input", recalc);
+    netWeight.addEventListener("input", recalc);
+    price.addEventListener("input", recalc);
+  }
+
+  const firstInput = row.querySelector("input, select");
+  if (firstInput) firstInput.focus();
 }
 
 function editLedger(id) {
-  const record = ledgerRecords.find((item) => String(item.id) === String(id));
-  if (!record) return;
-
-  openPage("ledger", document.querySelector("button[onclick*='ledger']"));
-
-  document.getElementById("ledgerDate").value = record.date;
-  document.getElementById("ledgerDescription").value = record.description;
-  document.getElementById("ledgerType").value = record.type;
-  document.getElementById("ledgerAmount").value = record.amount;
-
-  editingRecord.ledger = record.id;
-  document.getElementById("ledgerSubmitBtn").textContent = "Update Entry";
+  startInlineEdit("ledger", id);
 }
 
 function editSale(id) {
-  const record = salesRecords.find((item) => String(item.id) === String(id));
-  if (!record) return;
-
-  openPage("sales", document.querySelector("button[onclick*='sales']"));
-
-  document.getElementById("salesDate").value = record.date;
-  document.getElementById("salesDescription").value = record.description;
-  document.getElementById("salesInvoice").value = record.invoice || "";
-  document.getElementById("salesQuantity").value = record.quantity || "";
-  document.getElementById("salesPrice").value = record.price || "";
-  document.getElementById("salesAmount").value = Number(record.amount || (record.quantity * record.price) || 0).toFixed(2);
-  document.getElementById("salesAmountPaid").value = Number(record.amountPaid || 0).toFixed(2);
-  document.getElementById("salesPaidBy").value = record.paidBy || "";
-  document.getElementById("salesBalanceRemaining").value = Number(record.balanceRemaining ?? (Number(record.amount || 0) - Number(record.amountPaid || 0))).toFixed(2);
-
-  editingRecord.sales = record.id;
-  document.getElementById("salesSubmitBtn").textContent = "Update Sale";
-  const cancelBtn = document.getElementById("salesCancelBtn");
-  if (cancelBtn) cancelBtn.style.display = '';
+  startInlineEdit("sales", id);
 }
 
 function editPurchase(id) {
-  const record = purchaseRecords.find((item) => String(item.id) === String(id));
-  if (!record) return;
-
-  openPage("purchases", document.querySelector("button[onclick*='purchases']"));
-
-  document.getElementById("purchaseDate").value = record.date;
-  document.getElementById("purchaseType").value = record.type || "Other";
-  document.getElementById("purchaseDescription").value = record.description;
-  document.getElementById("purchaseReceipt").value = record.receipt || "";
-  document.getElementById("purchaseBoughtBy").value = record.boughtBy || "";
-  document.getElementById("purchaseQuantity").value = record.quantity;
-  document.getElementById("purchasePrice").value = record.price;
-  document.getElementById("purchaseAmount").value = record.amount;
-  document.getElementById("purchaseAmountPaid").value = Number(record.amountPaid || 0).toFixed(2);
-  document.getElementById("purchaseBalanceRemaining").value = Number(record.balanceRemaining ?? (Number(record.amount || 0) - Number(record.amountPaid || 0))).toFixed(2);
-
-  editingRecord.purchase = record.id;
-  document.getElementById("purchaseSubmitBtn").textContent = "Update Purchase";
+  startInlineEdit("purchase", id);
 }
 
 function editCostSale(id) {
-  const record = costSalesRecords.find((item) => String(item.id) === String(id));
-  if (!record) return;
-
-  openPage("costSales", document.querySelector("button[onclick*='costSales']"));
-
-  document.getElementById("costSalesDate").value = record.date;
-  document.getElementById("costSalesDescription").value = record.description;
-  document.getElementById("costSalesReference").value = record.reference || "";
-  document.getElementById("costSalesQuantity").value = record.quantity;
-  document.getElementById("costSalesPrice").value = record.price;
-  document.getElementById("costSalesAmount").value = record.amount;
-
-  editingRecord.costSales = record.id;
-  document.getElementById("costSalesSubmitBtn").textContent = "Update Cost";
+  startInlineEdit("costSales", id);
 }
+
 function editAdvance(id) {
-  const record = advanceRecords.find((item) => String(item.id) === String(id));
-  if (!record) return;
+  startInlineEdit("advance", id);
+}
 
-  openPage("advance", document.querySelector("button[onclick*='advance']"));
+function restoreInlineRow(type) {
+  const row = document.querySelector(`tr.inline-editing[data-table-type="${type}"]`);
+  if (row && row.dataset.originalHTML) {
+    row.innerHTML = row.dataset.originalHTML;
+    row.classList.remove("inline-editing");
+    delete row.dataset.originalHTML;
+  }
+}
 
-  const amountReceived =
-    Number(record.amountReceived || 0) ||
-    Number(record.estimatedPrice || 0) * Number(record.estimatedKg || 0);
+function cancelInlineEdit(type) {
+  restoreInlineRow(type);
+}
 
-  const amountRecovered =
-    Number(record.amountRecovered || 0) ||
-    Number(record.netWeight || 0) * Number(record.price || 0);
+function saveInlineEdit(type, id) {
+  const row = getTableRowById(type, id);
+  if (!row) return;
 
-  const excessDelivery =
-    Number(record.excessDelivery || 0) ||
-    amountReceived - amountRecovered;
+  const cells = row.querySelectorAll("td");
+  let updated = null;
 
-  document.getElementById("advanceDate").value = record.advanceDate || "";
-  document.getElementById("advancePerson").value = record.person || "";
-  document.getElementById("advancePaymentMode").value = record.paymentMode || "";
-  document.getElementById("advanceEstimatedPrice").value = record.estimatedPrice || "";
-  document.getElementById("advanceEstimatedKg").value = record.estimatedKg || "";
-  document.getElementById("advanceAmountReceived").value = amountReceived.toFixed(2);
+  if (type === "ledger") {
+    const date = cells[1].querySelector("input")?.value || "";
+    const description = cells[2].querySelector("input")?.value.trim() || "";
+    const creditInput = cells[3].querySelector("input");
+    const debitInput = cells[4].querySelector("input");
 
-  document.getElementById("advanceRecoveryDate").value = record.recoveryDate || "";
-  document.getElementById("advanceRecoveryType").value = record.recoveryType || "";
-  document.getElementById("advanceGrossWeight").value = record.grossWeight || "";
-  document.getElementById("advanceNetWeight").value = record.netWeight || "";
-  document.getElementById("advancePrice").value = record.price || "";
-  document.getElementById("advanceAmountRecovered").value = amountRecovered.toFixed(2);
-  document.getElementById("advanceExcessDelivery").value = excessDelivery.toFixed(2);
+    const old = ledgerRecords.find(r => String(r.id) === String(id));
+    if (!old) return;
 
-  editingRecord.advance = record.id;
-  document.getElementById("advanceSubmitBtn").textContent = "Update Advance";
+    const amount = Number(creditInput?.value || debitInput?.value || 0);
+    const recordType = creditInput ? "credit" : "debit";
+
+    if (!date || !description || amount <= 0) {
+      alert("Please enter a valid date, description and amount.");
+      return;
+    }
+
+    updated = {
+      ...old,
+      date,
+      description,
+      type: recordType,
+      amount,
+      _updatedAt: Date.now()
+    };
+
+    ledgerRecords = ledgerRecords.map(r => String(r.id) === String(id) ? updated : r);
+  }
+
+  if (type === "sales") {
+    const old = salesRecords.find(r => String(r.id) === String(id));
+    if (!old) return;
+
+    const date = cells[1].querySelector("input")?.value || "";
+    const description = cells[2].querySelector("input")?.value.trim() || "";
+    const invoice = cells[3].querySelector("input")?.value.trim() || "";
+    const quantity = Number(cells[4].querySelector("input")?.value || 0);
+    const price = Number(cells[5].querySelector("input")?.value || 0);
+    const amountPaid = Number(cells[7].querySelector("input")?.value || 0);
+    const paidBy = cells[8].querySelector("input")?.value.trim() || "";
+    const amount = quantity * price;
+    const balanceRemaining = Math.max(amount - amountPaid, 0);
+
+    if (!date || !description || quantity <= 0 || price <= 0 || amountPaid < 0 || amountPaid > amount) {
+      alert("Please enter valid sales details. Amount paid cannot exceed total amount.");
+      return;
+    }
+
+    updated = {
+      ...old,
+      date,
+      description,
+      invoice,
+      quantity,
+      price,
+      amount,
+      amountPaid,
+      paidBy,
+      balanceRemaining,
+      _updatedAt: Date.now()
+    };
+
+    salesRecords = salesRecords.map(r => String(r.id) === String(id) ? updated : r);
+  }
+
+  if (type === "purchase") {
+    const old = purchaseRecords.find(r => String(r.id) === String(id));
+    if (!old) return;
+
+    const date = cells[1].querySelector("input")?.value || "";
+    const recordType = cells[2].querySelector("input")?.value.trim() || "Other";
+    const description = cells[3].querySelector("input")?.value.trim() || "";
+    const receipt = cells[4].querySelector("input")?.value.trim() || "";
+    const boughtBy = cells[5].querySelector("input")?.value.trim() || "";
+    const quantity = Number(cells[6].querySelector("input")?.value || 0);
+    const price = Number(cells[7].querySelector("input")?.value || 0);
+    const amountPaid = Number(cells[9].querySelector("input")?.value || 0);
+    const amount = quantity * price;
+    const balanceRemaining = Math.max(amount - amountPaid, 0);
+
+    if (!date || !recordType || !description || !boughtBy || quantity <= 0 || price <= 0 || amount <= 0 || amountPaid < 0 || amountPaid > amount) {
+      alert("Please enter valid purchase details. Amount paid cannot exceed total amount.");
+      return;
+    }
+
+    updated = {
+      ...old,
+      date,
+      type: recordType,
+      description,
+      receipt,
+      boughtBy,
+      quantity,
+      price,
+      amount,
+      amountPaid,
+      balanceRemaining,
+      _updatedAt: Date.now()
+    };
+
+    purchaseRecords = purchaseRecords.map(r => String(r.id) === String(id) ? updated : r);
+  }
+
+  if (type === "costSales") {
+    const old = costSalesRecords.find(r => String(r.id) === String(id));
+    if (!old) return;
+
+    const date = cells[1].querySelector("input")?.value || "";
+    const description = cells[2].querySelector("input")?.value.trim() || "";
+    const reference = cells[3].querySelector("input")?.value.trim() || "";
+    const quantity = Number(cells[4].querySelector("input")?.value || 0);
+    const price = Number(cells[5].querySelector("input")?.value || 0);
+    const amount = quantity * price;
+
+    if (!date || !description || quantity <= 0 || price <= 0 || amount <= 0) {
+      alert("Please enter valid cost of sales details.");
+      return;
+    }
+
+    updated = {
+      ...old,
+      date,
+      description,
+      reference,
+      quantity,
+      price,
+      amount,
+      _updatedAt: Date.now()
+    };
+
+    costSalesRecords = costSalesRecords.map(r => String(r.id) === String(id) ? updated : r);
+  }
+
+  if (type === "advance") {
+    const old = advanceRecords.find(r => String(r.id) === String(id));
+    if (!old) return;
+
+    const advanceDate = cells[1].querySelector("input")?.value || "";
+    const person = cells[2].querySelector("input")?.value.trim() || "";
+    const paymentMode = cells[3].querySelector("input")?.value.trim() || "";
+    const estimatedPrice = Number(cells[4].querySelector("input")?.value || 0);
+    const estimatedKg = Number(cells[5].querySelector("input")?.value || 0);
+    const recoveryDate = cells[7].querySelector("input")?.value || "";
+    const recoveryType = cells[8].querySelector("input")?.value.trim() || "";
+    const grossWeight = Number(cells[9].querySelector("input")?.value || 0);
+    const netWeight = Number(cells[10].querySelector("input")?.value || 0);
+    const price = Number(cells[11].querySelector("input")?.value || 0);
+
+    const amountReceived = estimatedPrice * estimatedKg;
+    const amountRecovered = netWeight * price;
+    const excessDelivery = amountReceived - amountRecovered;
+
+    if (!advanceDate || !person || !paymentMode || !recoveryDate || !recoveryType || estimatedPrice <= 0 || estimatedKg <= 0) {
+      alert("Please enter valid advance details.");
+      return;
+    }
+
+    updated = {
+      ...old,
+      advanceDate,
+      person,
+      paymentMode,
+      estimatedPrice,
+      estimatedKg,
+      amountReceived,
+      recoveryDate,
+      recoveryType,
+      grossWeight,
+      netWeight,
+      price,
+      amountRecovered,
+      amount: amountRecovered,
+      excessDelivery,
+      _updatedAt: Date.now()
+    };
+
+    advanceRecords = advanceRecords.map(r => String(r.id) === String(id) ? updated : r);
+  }
+
+  if (!updated) return;
+
+  setLocalUpdatedAt(Date.now());
+  saveAll();
+  renderAll();
+  queueSupabaseSync(500);
 }
 
 /* =========================
