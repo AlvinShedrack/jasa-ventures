@@ -328,6 +328,17 @@ const LEDGER_PAGE_SIZE = 50;
 const TABLE_PAGE_SIZE = 50;
 let ledgerCurrentPage = 1;
 let salesCurrentPage = 1, purchaseCurrentPage = 1, costSalesCurrentPage = 1, advanceCurrentPage = 1;
+function sortByLatestDate(a, b) {
+  const dateA = new Date(a?.date || a?.advanceDate || 0).getTime() || 0;
+  const dateB = new Date(b?.date || b?.advanceDate || 0).getTime() || 0;
+
+  if (dateB !== dateA) return dateB - dateA;
+
+  const updatedA = Number(a?._updatedAt || 0);
+  const updatedB = Number(b?._updatedAt || 0);
+  return updatedB - updatedA;
+}
+
 function paginateRecords(records,page){const totalPages=Math.max(1,Math.ceil(records.length/TABLE_PAGE_SIZE));const safePage=Math.min(Math.max(1,page),totalPages);const startIndex=(safePage-1)*TABLE_PAGE_SIZE;return{totalPages,safePage,startIndex,pageRecords:records.slice(startIndex,startIndex+TABLE_PAGE_SIZE)}}
 function ensurePagination(table,key,getPage,setPage,render,getTotal){
   let c=document.getElementById(key+'Pagination');
