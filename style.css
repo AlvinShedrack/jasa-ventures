@@ -395,34 +395,74 @@ button {
 table {
   width: 100%;
   border-collapse: collapse;
-  min-width: 950px;
+  min-width: 1200px;
   border: 1px solid var(--border);
 }
 
 th {
   background: var(--primary);
   color: white;
-  padding: 13px;
+  padding: 13px 16px;
   text-align: center;
   border: 1px solid #1c2b50;
+  font-size: 14px;
+  font-weight: 600;
 }
 
 td {
-  padding: 12px;
+  padding: 14px 16px;
   border: 1px solid var(--border);
   text-align: center;
   word-wrap: break-word;
   word-break: break-word;
   overflow-wrap: break-word;
+  min-width: 120px;
+  max-width: 250px;
+}
+
+td:first-child {
+  min-width: 100px;
+}
+
+/* Action column (edit/delete buttons) - fixed width */
+td:last-child {
+  min-width: 180px;
   max-width: 200px;
+  padding: 10px 12px;
+}
+
+/* Date/time columns - wider for full display */
+td.date-column {
+  min-width: 140px;
+  max-width: 160px;
+}
+
+/* Text content columns */
+td.description-column,
+td.note-column {
+  min-width: 180px;
+  max-width: 280px;
+  text-align: left;
+}
+
+/* Numeric columns - centered */
+td.numeric-column {
+  min-width: 130px;
+  max-width: 150px;
+}
+
+/* Status/type columns */
+td.status-column {
+  min-width: 110px;
+  max-width: 140px;
 }
 
 /* Inline edit inputs in table cells - better visibility */
 td input,
 td select {
   width: 100%;
-  min-height: 40px;
-  padding: 8px;
+  min-height: 44px;
+  padding: 10px 12px;
   border-radius: 8px;
   border: 2px solid var(--accent);
   font-size: 14px;
@@ -430,7 +470,7 @@ td select {
   white-space: normal;
   overflow-wrap: break-word;
   word-break: break-word;
-  max-width: none;
+  max-width: 100%;
 }
 
 td input:focus,
@@ -459,16 +499,33 @@ tbody tr:nth-child(even) {
 .delete-btn {
   background: var(--danger);
   color: white;
-  min-height: 36px;
-  padding: 8px 10px;
+  min-height: 38px;
+  padding: 8px 12px;
+  width: 100%;
+  border: none;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+  display: block;
+  margin-bottom: 6px;
 }
 
 .receipt-btn {
   background: #0066cc;
   color: white;
-  min-height: 36px;
-  padding: 8px 10px;
-  margin-bottom: 5px;
+  min-height: 38px;
+  padding: 8px 12px;
+  width: 100%;
+  border: none;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+  display: block;
+  margin-bottom: 6px;
 }
 
 .empty-row {
@@ -531,13 +588,25 @@ tbody tr:nth-child(even) {
     font-size: 13px;
   }
 
+  table {
+    min-width: 900px;
+  }
+
   td {
-    max-width: 150px;
+    min-width: 100px;
+    max-width: 180px;
+    padding: 10px 12px;
+  }
+
+  td:last-child {
+    min-width: 140px;
+    max-width: 160px;
   }
 
   td input,
   td select {
     font-size: 16px;
+    min-height: 40px;
   }
 }
 
@@ -593,6 +662,19 @@ tbody tr:nth-child(even) {
     flex-direction: column;
     align-items: flex-start;
   }
+
+  table {
+    min-width: 900px;
+  }
+
+  td {
+    min-width: 100px;
+    max-width: 160px;
+  }
+
+  td:last-child {
+    min-width: 140px;
+  }
 }
 
 @media (min-width: 851px) and (max-width: 1100px) {
@@ -618,7 +700,17 @@ tbody tr:nth-child(even) {
     grid-template-columns: repeat(2, 1fr);
   }
 
+  table {
+    min-width: 1100px;
+  }
+
   td {
+    min-width: 110px;
+    max-width: 180px;
+  }
+
+  td:last-child {
+    min-width: 160px;
     max-width: 180px;
   }
 }
@@ -663,16 +755,25 @@ tbody tr:nth-child(even) {
 .edit-btn {
   background: #e7ad4a;
   color: #243865;
-  min-height: 36px;
-  padding: 8px 10px;
-  margin-bottom: 5px;
+  min-height: 38px;
+  padding: 8px 12px;
+  width: 100%;
+  border: none;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+  display: block;
+  margin-bottom: 6px;
 }
 
 .action-buttons {
   display: flex;
+  flex-direction: column;
   gap: 6px;
   justify-content: center;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
 }
 
 /* Compact search / small buttons for table filters */
