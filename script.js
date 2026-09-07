@@ -25,11 +25,24 @@ if (!window.CSS || typeof window.CSS.escape !== "function") {
     tr.inline-editing td {
       vertical-align: middle;
     }
+    tr.inline-editing {
+      background: #fffdf2 !important;
+    }
+    tr.inline-editing td {
+      min-width: 150px;
+      padding: 10px;
+    }
     tr.inline-editing input,
-    tr.inline-editing select {
-      min-height: 32px;
+    tr.inline-editing select,
+    tr.inline-editing textarea {
+      min-height: 42px;
       font: inherit;
       background: #fff;
+      color: #222;
+    }
+    tr.inline-editing textarea {
+      min-width: 240px;
+      white-space: pre-wrap;
     }
     tr.inline-editing input:focus,
     tr.inline-editing select:focus {
@@ -895,7 +908,11 @@ function renderAdvances() {
 
 function inlineInput(value, type = "text", extra = "") {
   const safe = escapeHTML(value ?? "");
-  return `<input type="${type}" value="${safe}" ${extra} style="width:100%;box-sizing:border-box;padding:5px 6px;border:1px solid #9aa8bd;border-radius:5px;">`;
+  const isLongText = type === "text" && String(value ?? "").length > 25;
+  if (isLongText) {
+    return `<textarea ${extra} rows="3" style="width:100%;min-width:220px;box-sizing:border-box;padding:8px;border:1px solid #9aa8bd;border-radius:5px;resize:vertical;font:inherit;line-height:1.35;">${safe}</textarea>`;
+  }
+  return `<input type="${type}" value="${safe}" ${extra} style="width:100%;min-width:120px;box-sizing:border-box;padding:8px;border:1px solid #9aa8bd;border-radius:5px;font:inherit;">`;
 }
 
 function inlineSelect(value, options) {
@@ -976,7 +993,16 @@ function startInlineEdit(type, id) {
 
   if (type === "purchase") {
     cells[1].innerHTML = inlineInput(record.date, "date");
-    cells[2].innerHTML = inlineInput(record.type || "Other");
+    cells[2].innerHTML = inlineSelect(record.type || "Other", [
+      "Stock",
+      "Raw Materials",
+      "Coffee Cherries",
+      "Wet Coffee",
+      "Dry Parchment",
+      "Packaging",
+      "Transport",
+      "Other"
+    ]);
     cells[3].innerHTML = inlineInput(record.description);
     cells[4].innerHTML = inlineInput(record.receipt || "");
     cells[5].innerHTML = inlineInput(record.boughtBy || "");
