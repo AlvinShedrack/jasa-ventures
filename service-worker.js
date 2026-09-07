@@ -1,4 +1,4 @@
-const CACHE_VERSION = "v21";
+const CACHE_VERSION = "v22";
 const PRECACHE = `jasa-ventures-precache-${CACHE_VERSION}`;
 const RUNTIME = `jasa-ventures-runtime-${CACHE_VERSION}`;
 
