@@ -593,6 +593,69 @@ document.getElementById("ledgerForm").addEventListener("submit", function (event
   document.getElementById("ledgerDate").valueAsDate = new Date();
 });
 
+document.getElementById("salesForm").addEventListener("submit", function (event) {
+  event.preventDefault();
+
+  const date = document.getElementById("salesDate").value;
+  const description = document.getElementById("salesDescription").value.trim();
+  const invoice = document.getElementById("salesInvoice").value.trim();
+  const quantity = Number(document.getElementById("salesQuantity").value);
+  const price = Number(document.getElementById("salesPrice").value);
+  const amountPaid = Number(
+    document.getElementById("salesAmountPaid").value || 0
+  );
+  const paidBy = document.getElementById("salesPaidBy").value.trim();
+
+  const amount = quantity * price;
+  const balanceRemaining = amount - amountPaid;
+
+  if (
+    !date ||
+    !description ||
+    quantity <= 0 ||
+    price <= 0 ||
+    amountPaid < 0 ||
+    amountPaid > amount
+  ) {
+    alert("Please enter valid sales details. Amount paid cannot exceed total amount.");
+    return;
+  }
+
+  const newRecord = {
+    id: editingRecord.sales || createId(),
+    date,
+    description,
+    invoice,
+    quantity,
+    price,
+    amount,
+    amountPaid,
+    paidBy,
+    balanceRemaining,
+    month: getMonthName(date),
+    _updatedAt: Date.now()
+  };
+
+  if (editingRecord.sales) {
+    salesRecords = salesRecords.map((record) =>
+      String(record.id) === String(editingRecord.sales)
+        ? newRecord
+        : record
+    );
+
+    editingRecord.sales = null;
+    document.getElementById("salesSubmitBtn").textContent = "Add Sale";
+  } else {
+    salesRecords.push(newRecord);
+  }
+
+  saveAll();
+  renderAll();
+
+  this.reset();
+  document.getElementById("salesDate").valueAsDate = new Date();
+  updateSalesValues();
+});
 
 function renderLedger() {
   const table = document.getElementById("ledgerTable");
