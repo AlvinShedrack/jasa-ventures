@@ -1161,6 +1161,35 @@ function editSale(id) {
   startInlineEdit("sales", id);
 }
 
+function deleteSale(id) {
+  const sale = salesRecords.find(
+    record => String(record.id) === String(id)
+  );
+
+  if (!sale) {
+    console.warn("Sale record not found:", id);
+    return;
+  }
+
+  const description = sale.description || "this sale";
+
+  if (!confirm(`Delete ${description}?`)) {
+    return;
+  }
+
+  salesRecords = salesRecords.filter(
+    record => String(record.id) !== String(id)
+  );
+
+  // Prevent the deleted sale from being restored during synchronization.
+  setLocalUpdatedAt(Date.now());
+
+  saveAll();
+  salesCurrentPage = 1;
+  renderAll();
+  queueSupabaseSync(500);
+}
+
 function editPurchase(id) {
   startInlineEdit("purchase", id);
 }
