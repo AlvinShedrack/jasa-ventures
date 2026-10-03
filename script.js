@@ -656,7 +656,199 @@ document.getElementById("salesForm").addEventListener("submit", function (event)
   document.getElementById("salesDate").valueAsDate = new Date();
   updateSalesValues();
 });
+document.getElementById("purchaseForm").addEventListener("submit", function (event) {
+  event.preventDefault();
 
+  const date = document.getElementById("purchaseDate").value;
+  const type = document.getElementById("purchaseType").value;
+  const description = document.getElementById("purchaseDescription").value.trim();
+  const receipt = document.getElementById("purchaseReceipt").value.trim();
+  const boughtBy = document.getElementById("purchaseBoughtBy").value.trim();
+  const quantity = Number(document.getElementById("purchaseQuantity").value);
+  const price = Number(document.getElementById("purchasePrice").value);
+  const amountPaid = Number(
+    document.getElementById("purchaseAmountPaid").value || 0
+  );
+
+  const amount = quantity * price;
+  const balanceRemaining = amount - amountPaid;
+
+  if (
+    !date ||
+    !type ||
+    !description ||
+    !boughtBy ||
+    quantity <= 0 ||
+    price <= 0 ||
+    amountPaid < 0 ||
+    amountPaid > amount
+  ) {
+    alert("Please enter valid purchase details. Amount paid cannot exceed total amount.");
+    return;
+  }
+
+  const newRecord = {
+    id: editingRecord.purchase || createId(),
+    date,
+    type,
+    description,
+    receipt,
+    boughtBy,
+    quantity,
+    price,
+    amount,
+    amountPaid,
+    balanceRemaining,
+    month: getMonthName(date),
+    _updatedAt: Date.now()
+  };
+
+  if (editingRecord.purchase) {
+    purchaseRecords = purchaseRecords.map((record) =>
+      String(record.id) === String(editingRecord.purchase)
+        ? newRecord
+        : record
+    );
+
+    editingRecord.purchase = null;
+    document.getElementById("purchaseSubmitBtn").textContent = "Add Purchase";
+  } else {
+    purchaseRecords.push(newRecord);
+  }
+
+  saveAll();
+  renderAll();
+
+  this.reset();
+  document.getElementById("purchaseDate").valueAsDate = new Date();
+  updatePurchaseAmount();
+});
+
+document.getElementById("costSalesForm").addEventListener("submit", function (event) {
+  event.preventDefault();
+
+  const date = document.getElementById("costSalesDate").value;
+  const description = document.getElementById("costSalesDescription").value.trim();
+  const reference = document.getElementById("costSalesReference").value.trim();
+  const quantity = Number(document.getElementById("costSalesQuantity").value);
+  const price = Number(document.getElementById("costSalesPrice").value);
+
+  const amount = quantity * price;
+
+  if (
+    !date ||
+    !description ||
+    quantity <= 0 ||
+    price <= 0 ||
+    amount <= 0
+  ) {
+    alert("Please enter valid cost of sales details.");
+    return;
+  }
+
+  const newRecord = {
+    id: editingRecord.costSales || createId(),
+    date,
+    description,
+    reference,
+    quantity,
+    price,
+    amount,
+    month: getMonthName(date),
+    _updatedAt: Date.now()
+  };
+
+  if (editingRecord.costSales) {
+    costSalesRecords = costSalesRecords.map((record) =>
+      String(record.id) === String(editingRecord.costSales)
+        ? newRecord
+        : record
+    );
+
+    editingRecord.costSales = null;
+    document.getElementById("costSalesSubmitBtn").textContent = "Add Cost";
+  } else {
+    costSalesRecords.push(newRecord);
+  }
+
+  saveAll();
+  renderAll();
+
+  this.reset();
+  document.getElementById("costSalesDate").valueAsDate = new Date();
+  updateCostSalesAmount();
+});
+
+document.getElementById("advanceForm").addEventListener("submit", function (event) {
+  event.preventDefault();
+
+  const advanceDate = document.getElementById("advanceDate").value;
+  const person = document.getElementById("advancePerson").value.trim();
+  const paymentMode = document.getElementById("advancePaymentMode").value.trim();
+  const estimatedPrice = Number(document.getElementById("advanceEstimatedPrice").value);
+  const estimatedKg = Number(document.getElementById("advanceEstimatedKg").value);
+  const recoveryDate = document.getElementById("advanceRecoveryDate").value;
+  const recoveryType = document.getElementById("advanceRecoveryType").value.trim();
+  const grossWeight = Number(document.getElementById("advanceGrossWeight").value || 0);
+  const netWeight = Number(document.getElementById("advanceNetWeight").value || 0);
+  const price = Number(document.getElementById("advancePrice").value);
+
+  const amountReceived = estimatedPrice * estimatedKg;
+  const amountRecovered = netWeight * price;
+  const excessDelivery = amountReceived - amountRecovered;
+
+  if (
+    !advanceDate ||
+    !person ||
+    !paymentMode ||
+    !recoveryDate ||
+    !recoveryType ||
+    estimatedPrice <= 0 ||
+    estimatedKg <= 0
+  ) {
+    alert("Please enter valid advance details.");
+    return;
+  }
+
+  const newRecord = {
+    id: editingRecord.advance || createId(),
+    advanceDate,
+    person,
+    paymentMode,
+    estimatedPrice,
+    estimatedKg,
+    amountReceived,
+    recoveryDate,
+    recoveryType,
+    grossWeight,
+    netWeight,
+    price,
+    amountRecovered,
+    amount: amountRecovered,
+    excessDelivery,
+    _updatedAt: Date.now()
+  };
+
+  if (editingRecord.advance) {
+    advanceRecords = advanceRecords.map((record) =>
+      String(record.id) === String(editingRecord.advance)
+        ? newRecord
+        : record
+    );
+
+    editingRecord.advance = null;
+    document.getElementById("advanceSubmitBtn").textContent = "Add Advance";
+  } else {
+    advanceRecords.push(newRecord);
+  }
+
+  saveAll();
+  renderAll();
+
+  this.reset();
+  document.getElementById("advanceDate").valueAsDate = new Date();
+  updateAdvanceCalculations();
+});
 function renderLedger() {
   const table = document.getElementById("ledgerTable");
   const count = document.getElementById("ledgerCount");
@@ -1193,7 +1385,117 @@ function deleteSale(id) {
 function editPurchase(id) {
   startInlineEdit("purchase", id);
 }
+function deleteLedger(id) {
+  const ledger = ledgerRecords.find(
+    record => String(record.id) === String(id)
+  );
 
+  if (!ledger) {
+    console.warn("Ledger record not found:", id);
+    return;
+  }
+
+  const description = ledger.description || "this entry";
+
+  if (!confirm(`Delete ${description}?`)) {
+    return;
+  }
+
+  ledgerRecords = ledgerRecords.filter(
+    record => String(record.id) !== String(id)
+  );
+
+  setLocalUpdatedAt(Date.now());
+
+  saveAll();
+  ledgerCurrentPage = 1;
+  renderAll();
+  queueSupabaseSync(500);
+}
+
+function deletePurchase(id) {
+  const purchase = purchaseRecords.find(
+    record => String(record.id) === String(id)
+  );
+
+  if (!purchase) {
+    console.warn("Purchase record not found:", id);
+    return;
+  }
+
+  const description = purchase.description || "this purchase";
+
+  if (!confirm(`Delete ${description}?`)) {
+    return;
+  }
+
+  purchaseRecords = purchaseRecords.filter(
+    record => String(record.id) !== String(id)
+  );
+
+  setLocalUpdatedAt(Date.now());
+
+  saveAll();
+  purchaseCurrentPage = 1;
+  renderAll();
+  queueSupabaseSync(500);
+}
+
+function deleteCostSale(id) {
+  const costSale = costSalesRecords.find(
+    record => String(record.id) === String(id)
+  );
+
+  if (!costSale) {
+    console.warn("Cost of sales record not found:", id);
+    return;
+  }
+
+  const description = costSale.description || "this cost of sale";
+
+  if (!confirm(`Delete ${description}?`)) {
+    return;
+  }
+
+  costSalesRecords = costSalesRecords.filter(
+    record => String(record.id) !== String(id)
+  );
+
+  setLocalUpdatedAt(Date.now());
+
+  saveAll();
+  costSalesCurrentPage = 1;
+  renderAll();
+  queueSupabaseSync(500);
+}
+
+function deleteAdvance(id) {
+  const advance = advanceRecords.find(
+    record => String(record.id) === String(id)
+  );
+
+  if (!advance) {
+    console.warn("Advance record not found:", id);
+    return;
+  }
+
+  const person = advance.person || "this advance";
+
+  if (!confirm(`Delete advance for ${person}?`)) {
+    return;
+  }
+
+  advanceRecords = advanceRecords.filter(
+    record => String(record.id) !== String(id)
+  );
+
+  setLocalUpdatedAt(Date.now());
+
+  saveAll();
+  advanceCurrentPage = 1;
+  renderAll();
+  queueSupabaseSync(500);
+}
 function editCostSale(id) {
   startInlineEdit("costSales", id);
 }
